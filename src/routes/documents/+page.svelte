@@ -4,7 +4,7 @@
 	import type { DocumentData } from '$lib/types/canvas';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import { Button } from '$lib/components';
+	import { Button, Seo } from '$lib/components';
 	import { appStore } from '$lib/stores/appStore.svelte.ts';
 	import Document from './(components)/Document.svelte';
 	import { Icons } from '$lib/icons';
@@ -44,6 +44,8 @@
 		fetchDocuments();
 	});
 </script>
+
+<Seo title="My Documents – Lienzo" path="/documents" noindex />
 
 <div class="min-h-screen">
 	<!-- Header -->

@@ -3,7 +3,7 @@
 	import Toolbar from './(components)/Toolbar.svelte';
 	import PropertyPanel from './(components)/PropertyPanel.svelte';
 	import ExportModal from './(components)/ExportModal.svelte';
-	import { Button } from '$lib/components';
+	import { Button, Seo } from '$lib/components';
 	import { NameModal } from '$lib/components';
 	import { isIndexedDBSupported, saveDocument } from '$lib/stores/idb';
 	import type { DocumentData } from '$lib/types/canvas';
@@ -253,6 +253,8 @@
 		};
 	});
 </script>
+
+<Seo title="Editor – Lienzo" path="/canvas" noindex />
 
 <div class="flex h-screen overflow-hidden">
 	<!-- Toolbar -->

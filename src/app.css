@@ -172,3 +172,8 @@
 		font-family: 'Inter', sans-serif;
 	}
 }
+
+/* Allow pinch zoom but remove the double-tap zoom delay (canvas sets touch-action per element) */
+body {
+	touch-action: manipulation;
+}
