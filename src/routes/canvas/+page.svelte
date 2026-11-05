@@ -1,4 +1,5 @@
 <script lang="ts">
+	import '$lib/fonts/editor.css';
 	import Canvas from './(components)/Canvas.svelte';
 	import Toolbar from './(components)/Toolbar.svelte';
 	import PropertyPanel from './(components)/PropertyPanel.svelte';

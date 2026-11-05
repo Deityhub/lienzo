@@ -1,0 +1,397 @@
+/*
+ * Editor fonts, loaded only on /canvas (the browser still downloads a face only when text uses it).
+ * Generated from the Google Fonts TTFs: instanced to drop opsz/wdth axes, subset to latin + latin-ext,
+ * hinting removed, WOFF2 (fonttools: varLib.instancer + pyftsubset --flavor=woff2).
+ */
+
+@font-face {
+	font-family: 'Inter';
+	font-style: italic;
+	font-weight: 100 900;
+	font-display: swap;
+	src: url('./inter/Inter-Italic-Variable.woff2') format('woff2');
+}
+
+@font-face {
+	font-family: 'Lato';
+	font-style: normal;
+	font-weight: 100;
+	font-display: swap;
+	src: url('./lato/Lato-Thin.woff2') format('woff2');
+}
+
+@font-face {
+	font-family: 'Lato';
+	font-style: italic;
+	font-weight: 100;
+	font-display: swap;
+	src: url('./lato/Lato-ThinItalic.woff2') format('woff2');
+}
+
+@font-face {
+	font-family: 'Lato';
+	font-style: normal;
+	font-weight: 300;
+	font-display: swap;
+	src: url('./lato/Lato-Light.woff2') format('woff2');
+}
+
+@font-face {
+	font-family: 'Lato';
+	font-style: italic;
+	font-weight: 300;
+	font-display: swap;
+	src: url('./lato/Lato-LightItalic.woff2') format('woff2');
+}
+
+@font-face {
+	font-family: 'Lato';
+	font-style: normal;
+	font-weight: 400;
+	font-display: swap;
+	src: url('./lato/Lato-Regular.woff2') format('woff2');
+}
+
+@font-face {
+	font-family: 'Lato';
+	font-style: italic;
+	font-weight: 400;
+	font-display: swap;
+	src: url('./lato/Lato-Italic.woff2') format('woff2');
+}
+
+@font-face {
+	font-family: 'Lato';
+	font-style: normal;
+	font-weight: 700;
+	font-display: swap;
+	src: url('./lato/Lato-Bold.woff2') format('woff2');
+}
+
+@font-face {
+	font-family: 'Lato';
+	font-style: italic;
+	font-weight: 700;
+	font-display: swap;
+	src: url('./lato/Lato-BoldItalic.woff2') format('woff2');
+}
+
+@font-face {
+	font-family: 'Lato';
+	font-style: normal;
+	font-weight: 900;
+	font-display: swap;
+	src: url('./lato/Lato-Black.woff2') format('woff2');
+}
+
+@font-face {
+	font-family: 'Lato';
+	font-style: italic;
+	font-weight: 900;
+	font-display: swap;
+	src: url('./lato/Lato-BlackItalic.woff2') format('woff2');
+}
+
+@font-face {
+	font-family: 'Merriweather';
+	font-style: normal;
+	font-weight: 100 900;
+	font-display: swap;
+	src: url('./merriweather/Merriweather-Variable.woff2') format('woff2');
+}
+
+@font-face {
+	font-family: 'Merriweather';
+	font-style: italic;
+	font-weight: 100 900;
+	font-display: swap;
+	src: url('./merriweather/Merriweather-Italic-Variable.woff2') format('woff2');
+}
+
+@font-face {
+	font-family: 'Montserrat';
+	font-style: normal;
+	font-weight: 100 900;
+	font-display: swap;
+	src: url('./montserrat/Montserrat-Variable.woff2') format('woff2');
+}
+
+@font-face {
+	font-family: 'Montserrat';
+	font-style: italic;
+	font-weight: 100 900;
+	font-display: swap;
+	src: url('./montserrat/Montserrat-Italic-Variable.woff2') format('woff2');
+}
+
+@font-face {
+	font-family: 'Nunito';
+	font-style: normal;
+	font-weight: 100 900;
+	font-display: swap;
+	src: url('./nunito/Nunito-Variable.woff2') format('woff2');
+}
+
+@font-face {
+	font-family: 'Nunito';
+	font-style: italic;
+	font-weight: 100 900;
+	font-display: swap;
+	src: url('./nunito/Nunito-Italic-Variable.woff2') format('woff2');
+}
+
+@font-face {
+	font-family: 'Open Sans';
+	font-style: normal;
+	font-weight: 100 900;
+	font-display: swap;
+	src: url('./open-sans/OpenSans-Variable.woff2') format('woff2');
+}
+
+@font-face {
+	font-family: 'Open Sans';
+	font-style: italic;
+	font-weight: 100 900;
+	font-display: swap;
+	src: url('./open-sans/OpenSans-Italic-Variable.woff2') format('woff2');
+}
+
+@font-face {
+	font-family: 'Oswald';
+	font-style: normal;
+	font-weight: 100 900;
+	font-display: swap;
+	src: url('./oswald/Oswald-Variable.woff2') format('woff2');
+}
+
+@font-face {
+	font-family: 'Playfair Display';
+	font-style: normal;
+	font-weight: 100 900;
+	font-display: swap;
+	src: url('./playfair-display/PlayfairDisplay-Variable.woff2') format('woff2');
+}
+
+@font-face {
+	font-family: 'Playfair Display';
+	font-style: italic;
+	font-weight: 100 900;
+	font-display: swap;
+	src: url('./playfair-display/PlayfairDisplay-Italic-Variable.woff2') format('woff2');
+}
+
+@font-face {
+	font-family: 'Poppins';
+	font-style: normal;
+	font-weight: 100;
+	font-display: swap;
+	src: url('./poppins/Poppins-Thin.woff2') format('woff2');
+}
+
+@font-face {
+	font-family: 'Poppins';
+	font-style: italic;
+	font-weight: 100;
+	font-display: swap;
+	src: url('./poppins/Poppins-ThinItalic.woff2') format('woff2');
+}
+
+@font-face {
+	font-family: 'Poppins';
+	font-style: normal;
+	font-weight: 200;
+	font-display: swap;
+	src: url('./poppins/Poppins-ExtraLight.woff2') format('woff2');
+}
+
+@font-face {
+	font-family: 'Poppins';
+	font-style: italic;
+	font-weight: 200;
+	font-display: swap;
+	src: url('./poppins/Poppins-ExtraLightItalic.woff2') format('woff2');
+}
+
+@font-face {
+	font-family: 'Poppins';
+	font-style: normal;
+	font-weight: 300;
+	font-display: swap;
+	src: url('./poppins/Poppins-Light.woff2') format('woff2');
+}
+
+@font-face {
+	font-family: 'Poppins';
+	font-style: italic;
+	font-weight: 300;
+	font-display: swap;
+	src: url('./poppins/Poppins-LightItalic.woff2') format('woff2');
+}
+
+@font-face {
+	font-family: 'Poppins';
+	font-style: normal;
+	font-weight: 400;
+	font-display: swap;
+	src: url('./poppins/Poppins-Regular.woff2') format('woff2');
+}
+
+@font-face {
+	font-family: 'Poppins';
+	font-style: italic;
+	font-weight: 400;
+	font-display: swap;
+	src: url('./poppins/Poppins-Italic.woff2') format('woff2');
+}
+
+@font-face {
+	font-family: 'Poppins';
+	font-style: normal;
+	font-weight: 500;
+	font-display: swap;
+	src: url('./poppins/Poppins-Medium.woff2') format('woff2');
+}
+
+@font-face {
+	font-family: 'Poppins';
+	font-style: italic;
+	font-weight: 500;
+	font-display: swap;
+	src: url('./poppins/Poppins-MediumItalic.woff2') format('woff2');
+}
+
+@font-face {
+	font-family: 'Poppins';
+	font-style: normal;
+	font-weight: 600;
+	font-display: swap;
+	src: url('./poppins/Poppins-SemiBold.woff2') format('woff2');
+}
+
+@font-face {
+	font-family: 'Poppins';
+	font-style: italic;
+	font-weight: 600;
+	font-display: swap;
+	src: url('./poppins/Poppins-SemiBoldItalic.woff2') format('woff2');
+}
+
+@font-face {
+	font-family: 'Poppins';
+	font-style: normal;
+	font-weight: 700;
+	font-display: swap;
+	src: url('./poppins/Poppins-Bold.woff2') format('woff2');
+}
+
+@font-face {
+	font-family: 'Poppins';
+	font-style: italic;
+	font-weight: 700;
+	font-display: swap;
+	src: url('./poppins/Poppins-BoldItalic.woff2') format('woff2');
+}
+
+@font-face {
+	font-family: 'Poppins';
+	font-style: normal;
+	font-weight: 800;
+	font-display: swap;
+	src: url('./poppins/Poppins-ExtraBold.woff2') format('woff2');
+}
+
+@font-face {
+	font-family: 'Poppins';
+	font-style: italic;
+	font-weight: 800;
+	font-display: swap;
+	src: url('./poppins/Poppins-ExtraBoldItalic.woff2') format('woff2');
+}
+
+@font-face {
+	font-family: 'Poppins';
+	font-style: normal;
+	font-weight: 900;
+	font-display: swap;
+	src: url('./poppins/Poppins-Black.woff2') format('woff2');
+}
+
+@font-face {
+	font-family: 'Poppins';
+	font-style: italic;
+	font-weight: 900;
+	font-display: swap;
+	src: url('./poppins/Poppins-BlackItalic.woff2') format('woff2');
+}
+
+@font-face {
+	font-family: 'Raleway';
+	font-style: normal;
+	font-weight: 100 900;
+	font-display: swap;
+	src: url('./raleway/Raleway-Variable.woff2') format('woff2');
+}
+
+@font-face {
+	font-family: 'Raleway';
+	font-style: italic;
+	font-weight: 100 900;
+	font-display: swap;
+	src: url('./raleway/Raleway-Italic-Variable.woff2') format('woff2');
+}
+
+@font-face {
+	font-family: 'Roboto';
+	font-style: normal;
+	font-weight: 100 900;
+	font-display: swap;
+	src: url('./roboto/Roboto-Variable.woff2') format('woff2');
+}
+
+@font-face {
+	font-family: 'Roboto';
+	font-style: italic;
+	font-weight: 100 900;
+	font-display: swap;
+	src: url('./roboto/Roboto-Italic-Variable.woff2') format('woff2');
+}
+
+@font-face {
+	font-family: 'Roboto Condensed';
+	font-style: normal;
+	font-weight: 100 900;
+	font-display: swap;
+	src: url('./roboto-condensed/RobotoCondensed-Variable.woff2') format('woff2');
+}
+
+@font-face {
+	font-family: 'Roboto Condensed';
+	font-style: italic;
+	font-weight: 100 900;
+	font-display: swap;
+	src: url('./roboto-condensed/RobotoCondensed-Italic-Variable.woff2') format('woff2');
+}
+
+@font-face {
+	font-family: 'Roboto Slab';
+	font-style: normal;
+	font-weight: 100 900;
+	font-display: swap;
+	src: url('./roboto-slab/RobotoSlab-Variable.woff2') format('woff2');
+}
+
+@font-face {
+	font-family: 'Source Code Pro';
+	font-style: normal;
+	font-weight: 100 900;
+	font-display: swap;
+	src: url('./source-code-pro/SourceCodePro-Variable.woff2') format('woff2');
+}
+
+@font-face {
+	font-family: 'Source Code Pro';
+	font-style: italic;
+	font-weight: 100 900;
+	font-display: swap;
+	src: url('./source-code-pro/SourceCodePro-Italic-Variable.woff2') format('woff2');
+}
