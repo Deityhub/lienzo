@@ -6,166 +6,79 @@ on:
   pull_request:
     branches: [main, develop]
 
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
 jobs:
   lint:
     name: Lint & Format Check
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'yarn'
-
-      - name: Install dependencies
-        run: yarn install --frozen-lockfile
-
-      - name: Run ESLint
-        run: yarn lint
-
-      - name: Check formatting
-        run: yarn format --check
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - run: yarn lint
 
   type-check:
     name: Type Check
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'yarn'
-
-      - name: Install dependencies
-        run: yarn install --frozen-lockfile
-
-      - name: Run type check
-        run: yarn check
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - run: yarn check
 
   unit-tests:
     name: Unit Tests
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-
+    # Playwright does not support ubuntu-latest (26.04) yet
+    runs-on: ubuntu-24.04
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'yarn'
-
-      - name: Install dependencies
-        run: yarn install --frozen-lockfile
-
-      - name: Install Playwright browsers
-        run: npx playwright install --with-deps
-
-      - name: Run unit tests
-        run: yarn test:unit --run
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - run: yarn playwright install --with-deps chromium
+      - run: yarn test:unit:run
 
   e2e-tests:
     name: E2E Tests
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-
+    # Playwright does not support ubuntu-latest (26.04) yet
+    runs-on: ubuntu-24.04
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'yarn'
-
-      - name: Install dependencies
-        run: yarn install --frozen-lockfile
-
-      - name: Install Playwright browsers
-        run: npx playwright install --with-deps
-
-      - name: Run E2E tests
-        run: yarn test:e2e
-
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - run: yarn playwright install --with-deps chromium
+      - run: yarn test:e2e
       - name: Upload test results
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-report
-          path: playwright-report/
+          name: playwright-test-results
+          path: test-results/
           retention-days: 7
 
   build:
     name: Build Check
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'yarn'
-
-      - name: Install dependencies
-        run: yarn install --frozen-lockfile
-
-      - name: Build project
-        run: yarn build
-
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: build
-          path: build/
-          retention-days: 7
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - run: yarn build
 
   all-checks-passed:
     name: All Checks Passed
     runs-on: ubuntu-latest
     needs: [lint, type-check, unit-tests, e2e-tests, build]
     if: always()
-
     steps:
       - name: Check if all jobs succeeded
+        env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
         run: |
-          if [[ "${{ needs.lint.result }}" != "success" ]] || \
-             [[ "${{ needs.type-check.result }}" != "success" ]] || \
-             [[ "${{ needs.unit-tests.result }}" != "success" ]] || \
-             [[ "${{ needs.e2e-tests.result }}" != "success" ]] || \
-             [[ "${{ needs.build.result }}" != "success" ]]; then
-            echo "One or more checks failed"
-            exit 1
-          fi
-          echo "All checks passed! ✅"
+          for r in $RESULTS; do
+            if [ "$r" != "success" ]; then
+              echo "One or more checks failed"
+              exit 1
+            fi
+          done
+          echo "All checks passed!"
