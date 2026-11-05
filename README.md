@@ -96,7 +96,7 @@ A modern, open-source document builder built with Svelte 5, TypeScript, and Tail
 
 ## 📋 Prerequisites
 
-- **Node.js** 22 or higher (see `.nvmrc`)
+- **Node.js** 22 (see `.nvmrc`)
 - **Yarn** 4 (run `corepack enable`; the version is pinned via `packageManager`)
 - **Git**
 
