@@ -328,7 +328,7 @@ We welcome contributions! Here's how to get involved:
 1. **Code Style**: Follow existing patterns and run `yarn format`
 2. **Tests**: Add tests for new features
 3. **Documentation**: Update README for significant changes
-4. **Pull Requests**: Use clear, descriptive titles
+4. **Pull Requests**: Use a [Conventional Commits](https://www.conventionalcommits.org/) title (e.g. `feat: add text alignment`, `fix: resize handle offset`). It is checked in CI and drives versioning
 
 ### Development Workflow
 
@@ -338,6 +338,18 @@ We welcome contributions! Here's how to get involved:
 4. Run the test suite: `yarn test`
 5. Format code: `yarn format`
 6. Submit a pull request
+
+## 🏷️ Versioning & Releases
+
+Lienzo follows [Semantic Versioning](https://semver.org/) and keeps a [CHANGELOG](CHANGELOG.md) generated from [Conventional Commits](https://www.conventionalcommits.org/). PRs are squash-merged into `develop` with a Conventional Commit title (`feat:`, `fix:`, `perf:`, `refactor:`, `docs:` appear in the changelog; `chore:`, `ci:`, `test:` etc. do not).
+
+To cut a release:
+
+1. **Prepare:** In GitHub, go to Actions → **Prepare Release** → Run workflow on `develop` and choose `patch`, `minor` or `major`. It opens a `chore(release): vX.Y.Z` PR into `develop` that bumps `package.json` and updates `CHANGELOG.md`.
+2. **Merge** that PR into `develop`.
+3. **Publish:** Open a PR from `develop` into `main` and merge it (use a merge commit so branches stay aligned). The **Release** workflow tags `vX.Y.Z` and creates the GitHub Release with the changelog notes.
+
+The running version is shown in the landing page footer. To make CI run on the release PR, add a personal access token as the repo secret `RELEASE_TOKEN`.
 
 ## 📝 License
 

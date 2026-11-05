@@ -146,6 +146,7 @@
 	<footer class="border-t border-border/50 bg-background/50 py-8">
 		<div class="container mx-auto px-4 text-center text-muted-foreground">
 			<p>&copy; {currentYear} Lienzo. Create beautiful documents with ease.</p>
+			<p class="mt-1 text-xs">v{__APP_VERSION__}</p>
 		</div>
 	</footer>
 </div>

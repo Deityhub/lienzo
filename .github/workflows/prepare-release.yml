@@ -1,0 +1,58 @@
+name: Prepare Release
+
+# Manual: Actions -> Prepare Release -> Run workflow (on develop) and pick the bump.
+# Opens a PR into develop with the version bump and CHANGELOG update.
+# After merging it, open develop -> main and merge to publish (see release.yml).
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: Version bump
+        type: choice
+        options: [patch, minor, major]
+        default: patch
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  prepare:
+    name: Open release PR
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/develop'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          # A PAT is needed so CI runs on the release PR (GITHUB_TOKEN pushes do not trigger workflows).
+          token: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+
+      - name: Bump version and update changelog
+        id: release
+        env:
+          BUMP: ${{ inputs.bump }}
+        run: |
+          npm version "$BUMP" --no-git-tag-version
+          VERSION=$(node -p "require('./package.json').version")
+          node scripts/changelog.mjs "$VERSION"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Open pull request
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c "release/v$VERSION"
+          git commit -am "chore(release): v$VERSION"
+          git push -u origin "release/v$VERSION"
+          gh pr create --base develop --head "release/v$VERSION" \
+            --title "chore(release): v$VERSION" \
+            --body "Version bump and changelog for v$VERSION. After merging, open a PR from \`develop\` into \`main\` and merge it to publish the release."
