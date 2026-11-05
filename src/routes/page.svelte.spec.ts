@@ -49,4 +49,10 @@ describe('/+page.svelte', () => {
 		// Verify the page title is set
 		await expect.element(h1).toHaveTextContent('Create Beautiful Documents');
 	});
+
+	it('should show the app version in the footer', async () => {
+		render(Page);
+
+		await expect.element(page.getByText(`v${__APP_VERSION__}`)).toBeInTheDocument();
+	});
 });

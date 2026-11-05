@@ -1,0 +1,33 @@
+name: Release
+
+# Runs when develop is merged into main. If package.json has a version that is not
+# tagged yet, creates the vX.Y.Z tag and GitHub Release using its CHANGELOG section.
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Tag and publish release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Create tag and GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          if git rev-parse -q --verify "refs/tags/v$VERSION" >/dev/null; then
+            echo "v$VERSION is already released, nothing to do."
+            exit 0
+          fi
+          awk -v v="$VERSION" '/^## /{ if (found) exit; if (index($0,"## ["v"]")==1 || index($0,"## "v" ")==1) found=1 } found' CHANGELOG.md > notes.md
+          test -s notes.md || { echo "No CHANGELOG section for $VERSION"; exit 1; }
+          gh release create "v$VERSION" --target "$GITHUB_SHA" --title "v$VERSION" --notes-file notes.md
