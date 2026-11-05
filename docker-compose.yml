@@ -1,0 +1,10 @@
+services:
+  lienzo:
+    build: .
+    image: lienzo:local
+    ports:
+      - '3000:3000'
+    environment:
+      # Public URL the app is served from (used by SvelteKit for CSRF/origin checks)
+      ORIGIN: http://localhost:3000
+    restart: unless-stopped

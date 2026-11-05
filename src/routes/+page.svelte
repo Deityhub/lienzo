@@ -1,8 +1,9 @@
 <script lang="ts">
-	import Button from '$lib/components/Button.svelte';
+	import { Button, Seo } from '$lib/components';
 	import { appStore } from '$lib/stores/appStore.svelte.ts';
 	import { ArrowRight, Download, Layers, Zap } from '@lucide/svelte';
 	import { Icons } from '$lib/icons';
+	import { AUTHOR_NAME, AUTHOR_URL, SITE_DESCRIPTION, SITE_NAME, SITE_URL } from '$lib/const/seo';
 
 	const steps = [
 		{ number: '1', title: 'Start', desc: "Click 'Start Building' to enter the editor" },
@@ -12,7 +13,22 @@
 	];
 
 	const currentYear: number = new Date().getFullYear();
+
+	const jsonLd = {
+		'@context': 'https://schema.org',
+		'@type': 'WebApplication',
+		name: SITE_NAME,
+		url: SITE_URL,
+		description: SITE_DESCRIPTION,
+		applicationCategory: 'BusinessApplication',
+		operatingSystem: 'Any',
+		browserRequirements: 'Requires JavaScript',
+		offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+		author: { '@type': 'Person', name: AUTHOR_NAME, url: AUTHOR_URL }
+	};
 </script>
+
+<Seo title="Lienzo – Free Document Builder for Resumes & Invoices" {jsonLd} />
 
 <div>
 	<!-- header section -->
@@ -28,12 +44,12 @@
 					Lienzo
 				</span>
 			</div>
-			<div class="flex items-center gap-4">
+			<nav aria-label="Main" class="flex items-center gap-4">
 				<Button href="/documents" variant="text">My Documents</Button>
 				<Button onClick={() => appStore.initNewDocument()} href="/canvas" variant="primary"
 					>Start Building</Button
 				>
-			</div>
+			</nav>
 		</div>
 	</header>
 
@@ -146,6 +162,7 @@
 	<footer class="border-t border-border/50 bg-background/50 py-8">
 		<div class="container mx-auto px-4 text-center text-muted-foreground">
 			<p>&copy; {currentYear} Lienzo. Create beautiful documents with ease.</p>
+			<p class="mt-1 text-xs">v{__APP_VERSION__}</p>
 		</div>
 	</footer>
 </div>

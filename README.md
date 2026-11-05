@@ -92,12 +92,12 @@ A modern, open-source document builder built with Svelte 5, TypeScript, and Tail
 - **Build Tool**: Vite
 - **Testing**: Vitest + Playwright
 - **Code Quality**: ESLint + Prettier
-- **Deployment**: Vercel (ready)
+- **Deployment**: Vercel, or Docker (GHCR and Docker Hub)
 
 ## 📋 Prerequisites
 
-- **Node.js** 18.0.0 or higher
-- **Yarn** (recommended) or npm
+- **Node.js** 22 (see `.nvmrc`)
+- **Yarn** 4 (run `corepack enable`; the version is pinned via `packageManager`)
 - **Git**
 
 ## 🚀 Quick Start
@@ -306,10 +306,28 @@ This runs both unit and e2e tests sequentially.
 2. **Automatic Deployments**: Every push to main branch triggers deployment
 3. **Environment Variables**: Configure any required environment variables
 
-### Manual Deployment
+### Docker
 
-1. **Build**: `yarn build`
-2. **Serve**: Use any static file server to serve the `build/` directory
+A multi-arch (amd64/arm64) image is published to GitHub Container Registry and Docker Hub on every release:
+
+```bash
+docker run -p 3000:3000 -e ORIGIN=http://localhost:3000 ghcr.io/deityhub/lienzo:latest
+```
+
+The same image is on Docker Hub as `deityhub/lienzo`. Pin a version with a tag instead of `latest` (e.g. `ghcr.io/deityhub/lienzo:1.1.0`). To build it yourself:
+
+```bash
+docker build -t lienzo .
+docker compose up --build   # http://localhost:3000
+```
+
+| Variable | Default                  | Description                                                        |
+| -------- | ------------------------ | ------------------------------------------------------------------ |
+| `ORIGIN` | _(required for hosting)_ | Public URL the app is served from, e.g. `https://docs.example.com` |
+| `PORT`   | `3000`                   | Port the server listens on                                         |
+| `HOST`   | `0.0.0.0`                | Interface the server binds to                                      |
+
+The image is built with `adapter-node` (`ADAPTER=node`); the default `yarn build` keeps targeting Vercel. Without Docker: `ADAPTER=node yarn build && node build`.
 
 ## 🤝 Contributing
 
@@ -328,7 +346,7 @@ We welcome contributions! Here's how to get involved:
 1. **Code Style**: Follow existing patterns and run `yarn format`
 2. **Tests**: Add tests for new features
 3. **Documentation**: Update README for significant changes
-4. **Pull Requests**: Use clear, descriptive titles
+4. **Pull Requests**: Use a [Conventional Commits](https://www.conventionalcommits.org/) title (e.g. `feat: add text alignment`, `fix: resize handle offset`). It is checked in CI and drives versioning
 
 ### Development Workflow
 
@@ -338,6 +356,18 @@ We welcome contributions! Here's how to get involved:
 4. Run the test suite: `yarn test`
 5. Format code: `yarn format`
 6. Submit a pull request
+
+## 🏷️ Versioning & Releases
+
+Lienzo follows [Semantic Versioning](https://semver.org/) and keeps a [CHANGELOG](CHANGELOG.md) generated from [Conventional Commits](https://www.conventionalcommits.org/). PRs are squash-merged into `develop` with a Conventional Commit title (`feat:`, `fix:`, `perf:`, `refactor:`, `docs:` appear in the changelog; `chore:`, `ci:`, `test:` etc. do not).
+
+To cut a release:
+
+1. **Prepare:** In GitHub, go to Actions → **Prepare Release** → Run workflow on `develop` and choose `patch`, `minor` or `major`. It opens a `chore(release): vX.Y.Z` PR into `develop` that bumps `package.json` and updates `CHANGELOG.md`.
+2. **Merge** that PR into `develop`.
+3. **Publish:** Open a PR from `develop` into `main` and merge it (use a merge commit so branches stay aligned). The **Release** workflow tags `vX.Y.Z` and creates the GitHub Release with the changelog notes.
+
+The running version is shown in the landing page footer. To make CI run on the release PR, add a personal access token as the repo secret `RELEASE_TOKEN`.
 
 ## 📝 License
 
