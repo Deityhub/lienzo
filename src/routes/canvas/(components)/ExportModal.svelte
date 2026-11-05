@@ -2,7 +2,8 @@
 	import { Modal } from '$lib/components';
 	import { NameModal } from '$lib/components';
 	import { appStore } from '$lib/stores/appStore.svelte.ts';
-	import jsPDF from 'jspdf';
+	import { downloadBlob } from '$lib/utils/download';
+	import { serializeDocuments } from '$lib/utils/documentFile';
 	import { getPageImageData } from '$lib/utils/canvas';
 	import { CANVAS_WIDTH, CANVAS_HEIGHT } from '$lib/const/dimension';
 
@@ -63,32 +64,28 @@
 		isGenerating = true;
 		try {
 			const pages = Object.values(appStore.getPages());
-			const pdf = new jsPDF({
-				orientation: pageWidth > pageHeight ? 'landscape' : 'portrait',
-				unit: 'mm',
-				format: [pageWidth, pageHeight]
-			});
-
+			const pngs: Uint8Array[] = [];
 			for (let i = 0; i < pages.length; i++) {
-				const page = pages[i];
 				progress = Math.round(((i + 1) / pages.length) * 100);
 
-				// Use the utility function to create export canvas
-				// and Convert to image data
-				const scale = appStore.getScale();
-				const imgData = await getPageImageData(page, scale);
-
-				// Add to PDF - use exact canvas dimensions
-				if (i > 0) {
-					pdf.addPage();
-				}
-
-				// Add image at full size (no scaling needed since we're using exact dimensions)
-				pdf.addImage(imgData, 'PNG', 0, 0, pageWidth, pageHeight, undefined, 'FAST');
+				// Rasterize the page, then keep the PNG bytes for the PDF
+				const imgData = await getPageImageData(pages[i], appStore.getScale());
+				if (!imgData) throw new Error('Could not render a page');
+				pngs.push(new Uint8Array(await (await fetch(imgData)).arrayBuffer()));
 			}
 
-			// Save the PDF
-			pdf.save(`${documentName || 'document'}.pdf`);
+			// The editable document is embedded in the PDF so it can be imported back
+			const { buildPdf } = await import('$lib/utils/pdfDocument');
+			const bytes = await buildPdf(
+				pngs,
+				{ widthMm: pageWidth, heightMm: pageHeight },
+				serializeDocuments([appStore.getCurrentDocument()]),
+				documentName
+			);
+			downloadBlob(
+				`${documentName || 'document'}.pdf`,
+				new Blob([new Uint8Array(bytes)], { type: 'application/pdf' })
+			);
 		} catch (_error) {
 			alert('Error generating PDF. Please try again.');
 			console.error('Error generating PDF: ', _error);
