@@ -8,6 +8,7 @@ import type {
 	RulerBoundaries
 } from '../types/canvas';
 import { CANVAS_WIDTH, CANVAS_HEIGHT, DISPLAY_SCALE } from '../const/dimension';
+import { CURRENT_SCHEMA_VERSION } from './migrations';
 
 // Create a writable store for the application state
 const createAppStore = () => {
@@ -26,6 +27,7 @@ const createAppStore = () => {
 
 	let currentDocument: DocumentData = $state({
 		id: uuidv4(),
+		schemaVersion: CURRENT_SCHEMA_VERSION,
 		name: '', // the user should set this value
 		pages: {
 			[firstPageId]: getDefaultPage(firstPageId)
@@ -125,6 +127,7 @@ const createAppStore = () => {
 
 		currentDocument = {
 			id: uuidv4(),
+			schemaVersion: CURRENT_SCHEMA_VERSION,
 			name: '', // the user should set this value
 			pages: {
 				[pageId]: getDefaultPage(pageId)

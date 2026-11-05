@@ -90,6 +90,8 @@ export interface DocumentPage {
 
 export interface DocumentData {
 	id: string;
+	/** Stored document shape version, see stores/migrations.ts */
+	schemaVersion: number;
 	name: string;
 	pages: Record<string, DocumentPage>;
 	createdAt: number;
