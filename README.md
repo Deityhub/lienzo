@@ -92,7 +92,7 @@ A modern, open-source document builder built with Svelte 5, TypeScript, and Tail
 - **Build Tool**: Vite
 - **Testing**: Vitest + Playwright
 - **Code Quality**: ESLint + Prettier
-- **Deployment**: Vercel (ready)
+- **Deployment**: Vercel, or Docker (GHCR and Docker Hub)
 
 ## 📋 Prerequisites
 
@@ -306,10 +306,28 @@ This runs both unit and e2e tests sequentially.
 2. **Automatic Deployments**: Every push to main branch triggers deployment
 3. **Environment Variables**: Configure any required environment variables
 
-### Manual Deployment
+### Docker
 
-1. **Build**: `yarn build`
-2. **Serve**: Use any static file server to serve the `build/` directory
+A multi-arch (amd64/arm64) image is published to GitHub Container Registry and Docker Hub on every release:
+
+```bash
+docker run -p 3000:3000 -e ORIGIN=http://localhost:3000 ghcr.io/deityhub/lienzo:latest
+```
+
+The same image is on Docker Hub as `deityhub/lienzo`. Pin a version with a tag instead of `latest` (e.g. `ghcr.io/deityhub/lienzo:1.1.0`). To build it yourself:
+
+```bash
+docker build -t lienzo .
+docker compose up --build   # http://localhost:3000
+```
+
+| Variable | Default                  | Description                                                        |
+| -------- | ------------------------ | ------------------------------------------------------------------ |
+| `ORIGIN` | _(required for hosting)_ | Public URL the app is served from, e.g. `https://docs.example.com` |
+| `PORT`   | `3000`                   | Port the server listens on                                         |
+| `HOST`   | `0.0.0.0`                | Interface the server binds to                                      |
+
+The image is built with `adapter-node` (`ADAPTER=node`); the default `yarn build` keeps targeting Vercel. Without Docker: `ADAPTER=node yarn build && node build`.
 
 ## 🤝 Contributing
 
