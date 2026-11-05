@@ -15,6 +15,7 @@ A modern, open-source document builder built with Svelte 5, TypeScript, and Tail
 - **Multi-page Support**: Create documents with unlimited pages
 - **Nested Elements**: Elements can contain other elements (hierarchical structure)
 - **UUID-based IDs**: Cryptographically secure unique identifiers for all elements
+- **Backup & Transfer**: Export documents to a `.lienzo.json` file and import them back (see below)
 - **Versatile Use Cases**: Perfect for resumes, invoices, letters, certificates, and more
 
 ### Advanced Canvas Tools
@@ -356,6 +357,18 @@ We welcome contributions! Here's how to get involved:
 4. Run the test suite: `yarn test`
 5. Format code: `yarn format`
 6. Submit a pull request
+
+## 💾 Backup & Transfer
+
+Documents are stored only in your browser (IndexedDB), so export them to keep a backup or move them to another browser or device. On the **Documents** page:
+
+- **Export** (on a document card) downloads that document as `<name>.lienzo.json`.
+- **Export all** downloads every document in one `lienzo-documents-<date>.lienzo.json` file.
+- **Import** reads one or more `.lienzo.json` files. New documents are added as they are. If a document with the same id is already in your library, you choose **Replace existing** (overwrites it) or **Keep both** (imports a separate copy, with `(imported)` appended to the name). Documents from older versions are upgraded automatically; invalid ones are skipped and listed.
+
+In the **editor**, the Import button loads a single-document file into the canvas, replacing its current content (you are asked first if the canvas is not empty). It is loaded as a new document, so saving it never overwrites an existing one.
+
+Image elements store a URL, so an imported document needs those images to still be reachable.
 
 ## 🏷️ Versioning & Releases
 

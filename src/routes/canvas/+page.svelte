@@ -4,7 +4,7 @@
 	import Toolbar from './(components)/Toolbar.svelte';
 	import PropertyPanel from './(components)/PropertyPanel.svelte';
 	import ExportModal from './(components)/ExportModal.svelte';
-	import { Button, Seo } from '$lib/components';
+	import { Button, Modal, Seo } from '$lib/components';
 	import { NameModal } from '$lib/components';
 	import { isIndexedDBSupported, saveDocument, StorageQuotaError } from '$lib/stores/idb';
 	import type { DocumentData } from '$lib/types/canvas';
@@ -15,7 +15,9 @@
 	import { browser } from '$app/environment';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import { Download, Plus, Save } from '@lucide/svelte';
+	import { Download, Plus, Save, Upload } from '@lucide/svelte';
+	import { readSingleDocument } from '$lib/utils/documentFile';
+	import { uuidv4 } from '$lib/utils/uuid';
 	import { Icons } from '$lib/icons';
 
 	const pages = $derived(Object.values(appStore.getPages()));
@@ -157,6 +159,37 @@
 	};
 
 	let isIndexedDbSupported = $state(false);
+
+	// Import a document file into the canvas, replacing whatever is there
+	let importInput: HTMLInputElement | undefined = $state();
+	let pendingDocument = $state<DocumentData | null>(null);
+	let importError = $state('');
+
+	const canvasHasContent = $derived(
+		pages.length > 1 || pages.some((page) => Object.keys(page.elements).length > 0)
+	);
+
+	function loadIntoCanvas(document: DocumentData) {
+		// New id: saving must not silently overwrite a saved document that has the same id
+		appStore.setCurrentDocument({ ...document, id: uuidv4() });
+		appStore.selectElement(null);
+		pendingDocument = null;
+	}
+
+	async function handleImportFile(event: Event) {
+		const input = event.currentTarget as HTMLInputElement;
+		const file = input.files?.[0];
+		input.value = ''; // allow importing the same file again
+		if (!file) return;
+
+		try {
+			const document = await readSingleDocument(file);
+			if (canvasHasContent) pendingDocument = document;
+			else loadIntoCanvas(document);
+		} catch (error) {
+			importError = error instanceof Error ? error.message : 'The file could not be imported.';
+		}
+	}
 
 	const MIN_SCALE = 0.12;
 	const MIN_WIDTH = 360;
@@ -305,6 +338,24 @@
 				<Button onClick={handleBackNavigation} variant="ghost" data-testid="back-btn">
 					Cancel
 				</Button>
+				<Button
+					disabled={savePending}
+					onClick={() => importInput?.click()}
+					variant="secondary"
+					data-testid="canvas-import-btn"
+				>
+					<Upload class="mr-2 h-4 w-4" />
+					Import
+				</Button>
+				<input
+					bind:this={importInput}
+					type="file"
+					accept=".lienzo.json,.json,application/json"
+					class="hidden"
+					onchange={handleImportFile}
+					data-testid="canvas-import-input"
+					aria-label="Import a document into the canvas"
+				/>
 				{#if isIndexedDbSupported}
 					<Button
 						disabled={savePending}
@@ -390,6 +441,31 @@
 			{/if}
 		</NameModal>
 	{/if}
+
+	<Modal
+		open={pendingDocument !== null}
+		title="Replace the current canvas?"
+		acceptLabel="Replace canvas"
+		onCancel={() => (pendingDocument = null)}
+		onAccept={() => pendingDocument && loadIntoCanvas(pendingDocument)}
+		closeFromBackdrop={true}
+	>
+		<p class="text-sm text-muted-foreground" data-testid="canvas-import-confirm">
+			Importing "{pendingDocument?.name}" replaces everything on the canvas. Unsaved changes will be
+			lost.
+		</p>
+	</Modal>
+
+	<Modal
+		open={importError !== ''}
+		title="Couldn't import the file"
+		onCancel={() => (importError = '')}
+		showAcceptAction={false}
+		cancelLabel="Close"
+		closeFromBackdrop={true}
+	>
+		<p class="text-sm text-destructive" data-testid="canvas-import-error">{importError}</p>
+	</Modal>
 
 	<!-- Property Panel -->
 	<PropertyPanel />

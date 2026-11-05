@@ -4,15 +4,29 @@
 	import type { DocumentData } from '$lib/types/canvas';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import { Button, Seo } from '$lib/components';
+	import { Button, Modal, Seo } from '$lib/components';
 	import { appStore } from '$lib/stores/appStore.svelte.ts';
 	import Document from './(components)/Document.svelte';
 	import { Icons } from '$lib/icons';
+	import { Download, Upload } from '@lucide/svelte';
+	import {
+		exportAllDocuments,
+		FILE_EXTENSION,
+		findConflicts,
+		readDocumentFiles,
+		saveImportedDocuments,
+		type ConflictChoice
+	} from '$lib/utils/documentFile';
 
 	let documents = $state<DocumentData[]>([]);
 	let loading = $state(true);
 	let error = $state('');
 	let searchQuery = $state('');
+	let fileInput: HTMLInputElement | undefined = $state();
+	let importing = $state(false);
+	let notice = $state<{ kind: 'success' | 'error'; message: string; details: string[] } | null>(
+		null
+	);
 
 	async function fetchDocuments() {
 		loading = true;
@@ -24,6 +38,65 @@
 			error = 'Failed to load documents. Please try again.';
 		} finally {
 			loading = false;
+		}
+	}
+
+	// Documents read from the chosen files, waiting for the user to resolve id conflicts
+	let pendingImport = $state<{
+		documents: DocumentData[];
+		conflicts: DocumentData[];
+		errors: string[];
+	} | null>(null);
+
+	async function handleImport(event: Event) {
+		const input = event.currentTarget as HTMLInputElement;
+		const files = Array.from(input.files ?? []);
+		input.value = ''; // allow importing the same file again
+		if (!files.length) return;
+
+		importing = true;
+		try {
+			const { documents: incoming, errors } = await readDocumentFiles(files);
+			const conflicts = findConflicts(incoming, documents);
+			if (conflicts.length) {
+				pendingImport = { documents: incoming, conflicts, errors };
+			} else {
+				await finishImport(incoming, errors, 'copy');
+			}
+		} catch (_error) {
+			console.error('Error importing documents:', _error);
+			notice = { kind: 'error', message: 'Import failed. Please try again.', details: [] };
+		} finally {
+			importing = false;
+		}
+	}
+
+	async function finishImport(incoming: DocumentData[], errors: string[], choice: ConflictChoice) {
+		const imported = await saveImportedDocuments(incoming, documents, choice);
+		await fetchDocuments();
+		const plural = imported === 1 ? 'document' : 'documents';
+		notice = {
+			kind: imported > 0 ? 'success' : 'error',
+			message:
+				imported > 0
+					? `Imported ${imported} ${plural}.${errors.length ? ' Some could not be imported:' : ''}`
+					: 'Nothing was imported:',
+			details: errors
+		};
+	}
+
+	async function resolveConflicts(choice: ConflictChoice) {
+		const pending = pendingImport;
+		if (!pending) return;
+		pendingImport = null;
+		importing = true;
+		try {
+			await finishImport(pending.documents, pending.errors, choice);
+		} catch (_error) {
+			console.error('Error importing documents:', _error);
+			notice = { kind: 'error', message: 'Import failed. Please try again.', details: [] };
+		} finally {
+			importing = false;
 		}
 	}
 
@@ -89,6 +162,36 @@
 							class="block w-full rounded-md border-0 bg-background py-1.5 pr-3 pl-10 text-foreground ring-1 ring-ring ring-inset placeholder:text-muted-foreground/60 focus:ring-ring/20 focus:ring-inset sm:text-sm sm:leading-6"
 						/>
 					</div>
+					<Button
+						onClick={() => fileInput?.click()}
+						variant="secondary"
+						className="whitespace-nowrap"
+						disabled={importing}
+						data-testid="import-btn"
+					>
+						<Upload class="mr-2 h-4 w-4" />
+						Import
+					</Button>
+					<Button
+						onClick={() => exportAllDocuments(documents)}
+						variant="secondary"
+						className="whitespace-nowrap"
+						disabled={documents.length === 0}
+						data-testid="export-all-btn"
+					>
+						<Download class="mr-2 h-4 w-4" />
+						Export all
+					</Button>
+					<input
+						bind:this={fileInput}
+						type="file"
+						accept={`${FILE_EXTENSION},.json,application/json`}
+						multiple
+						class="hidden"
+						onchange={handleImport}
+						data-testid="import-input"
+						aria-label="Import documents from a file"
+					/>
 					<Button onClick={handleCreateNew} variant="primary" className="whitespace-nowrap">
 						<svg
 							xmlns="http://www.w3.org/2000/svg"
@@ -109,12 +212,71 @@
 		</div>
 	</header>
 
+	<Modal
+		open={pendingImport !== null}
+		title="Some documents already exist"
+		onCancel={() => (pendingImport = null)}
+		showAcceptAction={false}
+		closeFromBackdrop={true}
+	>
+		<p class="text-sm text-muted-foreground">
+			{pendingImport?.conflicts.length === 1
+				? 'This document is already in your library:'
+				: `These ${pendingImport?.conflicts.length} documents are already in your library:`}
+		</p>
+		<ul class="mt-2 max-h-40 list-disc overflow-y-auto pl-5 text-sm" data-testid="conflict-list">
+			{#each pendingImport?.conflicts ?? [] as conflict (conflict.id)}
+				<li>{conflict.name}</li>
+			{/each}
+		</ul>
+		<div class="mt-5 flex flex-col gap-2 sm:flex-row">
+			<Button
+				onClick={() => resolveConflicts('copy')}
+				variant="primary"
+				data-testid="import-keep-both-btn"
+			>
+				Keep both (import as copy)
+			</Button>
+			<Button
+				onClick={() => resolveConflicts('replace')}
+				variant="secondary-destructive"
+				data-testid="import-replace-btn"
+			>
+				Replace existing
+			</Button>
+		</div>
+		<p class="mt-3 text-xs text-muted-foreground">
+			Replacing overwrites the saved version and cannot be undone.
+		</p>
+	</Modal>
+
 	<!-- Main Content -->
 	<main class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
 		<div class="mb-8">
 			<h1 class="text-2xl font-bold text-foreground">Documents</h1>
 			<p class="mt-1 text-sm text-muted-foreground">View and manage your documents</p>
 		</div>
+		{#if notice}
+			<div
+				class="mb-6 rounded-md p-4 text-sm {notice.kind === 'success'
+					? 'bg-success/15 text-foreground'
+					: 'bg-destructive/20 text-destructive'}"
+				role={notice.kind === 'success' ? 'status' : 'alert'}
+				data-testid="import-notice"
+			>
+				<div class="flex items-start justify-between gap-4">
+					<p class="font-medium">{notice.message}</p>
+					<button type="button" class="underline" onclick={() => (notice = null)}>Dismiss</button>
+				</div>
+				{#if notice.details.length}
+					<ul class="mt-2 list-disc pl-5">
+						{#each notice.details as detail (detail)}
+							<li>{detail}</li>
+						{/each}
+					</ul>
+				{/if}
+			</div>
+		{/if}
 		{#if loading}
 			<div
 				class="flex flex-col items-center justify-center py-12 text-center text-muted-foreground"
