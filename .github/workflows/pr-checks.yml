@@ -5,25 +5,11 @@ on:
     types: [opened, synchronize, reopened]
 
 jobs:
-  pr-info:
-    name: PR Information
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: PR Details
-        run: |
-          echo "PR #${{ github.event.pull_request.number }}"
-          echo "Title: ${{ github.event.pull_request.title }}"
-          echo "Author: ${{ github.event.pull_request.user.login }}"
-          echo "Base: ${{ github.event.pull_request.base.ref }}"
-          echo "Head: ${{ github.event.pull_request.head.ref }}"
-
   size-label:
     name: PR Size Label
     runs-on: ubuntu-latest
     permissions:
       pull-requests: write
-
     steps:
       - name: Add size label
         uses: codelytv/pr-size-labeler@v1
@@ -40,30 +26,11 @@ jobs:
           xl_label: 'size/xl'
           fail_if_xl: false
 
-  comment-coverage:
-    name: Comment Test Coverage
+  labeler:
+    name: Label by Changed Files
     runs-on: ubuntu-latest
     permissions:
       contents: read
       pull-requests: write
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'yarn'
-
-      - name: Install dependencies
-        run: yarn install --frozen-lockfile
-
-      - name: Install Playwright browsers
-        run: npx playwright install --with-deps
-
-      - name: Run tests with coverage
-        run: yarn test:unit --run --coverage
+      - uses: actions/labeler@v5

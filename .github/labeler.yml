@@ -1,38 +1,56 @@
 # Automatically label PRs based on changed files
 
 'documentation':
-  - '**/*.md'
-  - 'docs/**/*'
+  - changed-files:
+      - any-glob-to-any-file:
+          - '**/*.md'
+          - 'docs/**/*'
 
 'dependencies':
-  - 'package.json'
-  - 'yarn.lock'
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'package.json'
+          - 'yarn.lock'
 
 'tests':
-  - '**/*.spec.ts'
-  - '**/*.test.ts'
-  - 'e2e/**/*'
-  - 'tests/**/*'
+  - changed-files:
+      - any-glob-to-any-file:
+          - '**/*.spec.ts'
+          - '**/*.test.ts'
+          - 'e2e/**/*'
+          - 'tests/**/*'
 
 'ci/cd':
-  - '.github/**/*'
+  - changed-files:
+      - any-glob-to-any-file:
+          - '.github/**/*'
 
 'components':
-  - 'src/lib/components/**/*'
-  - 'src/routes/**/components/**/*'
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'src/lib/components/**/*'
+          - 'src/routes/**/components/**/*'
 
 'store':
-  - 'src/lib/stores/**/*'
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'src/lib/stores/**/*'
 
 'types':
-  - 'src/lib/types/**/*'
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'src/lib/types/**/*'
 
 'styles':
-  - '**/*.css'
-  - 'tailwind.config.*'
+  - changed-files:
+      - any-glob-to-any-file:
+          - '**/*.css'
+          - 'tailwind.config.*'
 
 'config':
-  - '*.config.*'
-  - '.eslintrc.*'
-  - '.prettierrc.*'
-  - 'tsconfig.json'
+  - changed-files:
+      - any-glob-to-any-file:
+          - '*.config.*'
+          - '.eslintrc.*'
+          - '.prettierrc.*'
+          - 'tsconfig.json'
