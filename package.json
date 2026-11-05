@@ -32,7 +32,9 @@
 	"devDependencies": {
 		"@eslint/compat": "^1.2.5",
 		"@eslint/js": "^9.22.0",
+		"@lucide/svelte": "^0.548.0",
 		"@playwright/test": "^1.49.1",
+		"@sveltejs/adapter-node": "^5",
 		"@sveltejs/adapter-vercel": "^5.6.3",
 		"@sveltejs/kit": "^2.22.0",
 		"@sveltejs/vite-plugin-svelte": "^6.0.0",
@@ -44,6 +46,8 @@
 		"eslint-config-prettier": "^10.0.1",
 		"eslint-plugin-svelte": "^3.0.0",
 		"globals": "^16.0.0",
+		"html-to-image": "^1.11.13",
+		"jspdf": "^3.0.3",
 		"playwright": "^1.53.0",
 		"prettier": "^3.4.2",
 		"prettier-plugin-svelte": "^3.3.3",
@@ -56,10 +60,5 @@
 		"vite": "^7.0.4",
 		"vitest": "^3.2.3",
 		"vitest-browser-svelte": "^0.1.0"
-	},
-	"dependencies": {
-		"@lucide/svelte": "^0.548.0",
-		"html-to-image": "^1.11.13",
-		"jspdf": "^3.0.3"
 	}
 }

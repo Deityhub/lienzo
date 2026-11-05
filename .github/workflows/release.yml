@@ -1,7 +1,8 @@
 name: Release
 
 # Runs when develop is merged into main. If package.json has a version that is not
-# tagged yet, creates the vX.Y.Z tag and GitHub Release using its CHANGELOG section.
+# tagged yet, creates the vX.Y.Z tag and GitHub Release using its CHANGELOG section,
+# then publishes the Docker image to GHCR and Docker Hub.
 
 on:
   push:
@@ -14,20 +15,67 @@ jobs:
   release:
     name: Tag and publish release
     runs-on: ubuntu-latest
+    outputs:
+      released: ${{ steps.release.outputs.released }}
+      version: ${{ steps.release.outputs.version }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
       - name: Create tag and GitHub Release
+        id: release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           VERSION=$(node -p "require('./package.json').version")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           if git rev-parse -q --verify "refs/tags/v$VERSION" >/dev/null; then
             echo "v$VERSION is already released, nothing to do."
+            echo "released=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           awk -v v="$VERSION" '/^## /{ if (found) exit; if (index($0,"## ["v"]")==1 || index($0,"## "v" ")==1) found=1 } found' CHANGELOG.md > notes.md
           test -s notes.md || { echo "No CHANGELOG section for $VERSION"; exit 1; }
           gh release create "v$VERSION" --target "$GITHUB_SHA" --title "v$VERSION" --notes-file notes.md
+          echo "released=true" >> "$GITHUB_OUTPUT"
+
+  docker:
+    name: Publish Docker image
+    needs: release
+    if: needs.release.outputs.released == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            ghcr.io/${{ github.repository }}
+            ${{ secrets.DOCKERHUB_USERNAME }}/lienzo
+          tags: |
+            type=raw,value=${{ needs.release.outputs.version }}
+            type=raw,value=latest
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
