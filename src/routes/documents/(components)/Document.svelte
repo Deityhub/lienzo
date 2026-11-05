@@ -5,7 +5,8 @@
 	import { resolve } from '$app/paths';
 	import { Button, Modal } from '$lib/components';
 	import { appStore } from '$lib/stores/appStore.svelte.ts';
-	import { Trash2, Pen } from '@lucide/svelte';
+	import { Trash2, Pen, Download } from '@lucide/svelte';
+	import { exportDocument } from '$lib/utils/documentFile';
 
 	const {
 		document,
@@ -86,6 +87,15 @@
 				<Button onClick={() => handleEdit(document)} variant="secondary" size="xs">
 					<Pen class="mr-2 h-4 w-4" />
 					Edit
+				</Button>
+				<Button
+					onClick={() => exportDocument(document)}
+					variant="secondary"
+					size="xs"
+					data-testid="export-document-btn"
+				>
+					<Download class="mr-2 h-4 w-4" />
+					Export
 				</Button>
 				<Button onClick={openDeleteModal} variant="secondary-destructive" size="xs">
 					<Trash2 class="mr-2 h-4 w-4" />

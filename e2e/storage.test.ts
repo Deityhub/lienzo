@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { seedDocument } from './helpers';
 
 // A document saved by an older app version (before schemaVersion existed)
 const legacyDocument = {
@@ -33,24 +34,6 @@ const legacyDocument = {
 };
 
 test('documents saved before schema versioning still appear in the list', async ({ page }) => {
-	await page.goto('/documents'); // creates the database
-	await expect(page.getByText('No documents')).toBeVisible();
-
-	await page.evaluate(
-		(doc) =>
-			new Promise<void>((resolve, reject) => {
-				const open = indexedDB.open('lienzo-db', 1);
-				open.onsuccess = () => {
-					const tx = open.result.transaction('documents', 'readwrite');
-					tx.objectStore('documents').put(doc);
-					tx.oncomplete = () => resolve();
-					tx.onerror = () => reject(tx.error);
-				};
-				open.onerror = () => reject(open.error);
-			}),
-		legacyDocument
-	);
-
-	await page.reload();
+	await seedDocument(page, legacyDocument);
 	await expect(page.getByText('Legacy Resume')).toBeVisible();
 });
