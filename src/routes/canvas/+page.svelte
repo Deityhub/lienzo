@@ -6,7 +6,7 @@
 	import ExportModal from './(components)/ExportModal.svelte';
 	import { Button, Seo } from '$lib/components';
 	import { NameModal } from '$lib/components';
-	import { isIndexedDBSupported, saveDocument } from '$lib/stores/idb';
+	import { isIndexedDBSupported, saveDocument, StorageQuotaError } from '$lib/stores/idb';
 	import type { DocumentData } from '$lib/types/canvas';
 	import type { ElementType, TCanvasInstance } from '$lib/types/canvas';
 	import { appStore } from '$lib/stores/appStore.svelte.ts';
@@ -375,7 +375,10 @@
 					saveModalOpen = false;
 					saveError = '';
 				} catch (err) {
-					saveError = 'Failed to save. Please try again: ' + err;
+					saveError =
+						err instanceof StorageQuotaError
+							? err.message
+							: 'Failed to save. Please try again: ' + err;
 				} finally {
 					savePending = false;
 				}
