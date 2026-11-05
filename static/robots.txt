@@ -1,6 +1,4 @@
-# allow crawling everything by default
 User-agent: *
-Disallow:
+Allow: /
 
-# crawl delay for respectful crawling (e.g., 10 seconds between requests)
-Crawl-delay: 10
+Sitemap: https://lienzo.deityhub.com/sitemap.xml

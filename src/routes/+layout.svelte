@@ -5,11 +5,6 @@
 </script>
 
 <svelte:head>
-	<title>Lienzo - A modern document builder</title>
-	<meta
-		name="description"
-		content="A versatile document builder for creating resumes, invoices, letters, and more. Build beautiful, professional documents with our intuitive drag-and-drop canvas."
-	/>
 	<link rel="stylesheet" href="/fonts/fonts.css" />
 </svelte:head>
 
