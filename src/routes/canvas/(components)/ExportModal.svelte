@@ -63,29 +63,20 @@
 		}
 		isGenerating = true;
 		try {
-			const pages = Object.values(appStore.getPages());
-			const pngs: Uint8Array[] = [];
-			for (let i = 0; i < pages.length; i++) {
-				progress = Math.round(((i + 1) / pages.length) * 100);
-
-				// Rasterize the page, then keep the PNG bytes for the PDF
-				const imgData = await getPageImageData(pages[i], appStore.getScale());
-				if (!imgData) throw new Error('Could not render a page');
-				pngs.push(new Uint8Array(await (await fetch(imgData)).arrayBuffer()));
-			}
-
-			// The editable document is embedded in the PDF so it can be imported back
-			const { buildPdf } = await import('$lib/utils/pdfDocument');
-			const bytes = await buildPdf(
-				pngs,
-				{ widthMm: pageWidth, heightMm: pageHeight },
-				serializeDocuments([appStore.getCurrentDocument()]),
+			// Real text and vector shapes, with the editable document embedded so it can be imported back
+			const { renderDocumentPdf } = await import('$lib/pdf/renderDocument');
+			const document = appStore.getCurrentDocument();
+			const { bytes, warnings } = await renderDocumentPdf(
+				document,
+				serializeDocuments([document]),
 				documentName
 			);
+			progress = 100;
 			downloadBlob(
 				`${documentName || 'document'}.pdf`,
 				new Blob([new Uint8Array(bytes)], { type: 'application/pdf' })
 			);
+			if (warnings.length) alert(`The PDF was exported, but:\n\n${warnings.join('\n')}`);
 		} catch (_error) {
 			alert('Error generating PDF. Please try again.');
 			console.error('Error generating PDF: ', _error);

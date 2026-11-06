@@ -1,7 +1,11 @@
 <script lang="ts">
 	import type { ImageElement } from '$lib/types/canvas';
+	import { appStore } from '$lib/stores/appStore.svelte.ts';
+	import { textScale } from '$lib/utils/viewport';
 
 	const { element }: { element: ImageElement } = $props();
+	// Border widths are stored for the full display scale, like text sizes
+	const borderWidth = $derived((element.borderWidth || 0) * textScale(appStore.getScale()));
 
 	const backgroundSize = $derived(
 		element.objectFit === 'contain'
@@ -19,7 +23,7 @@
 	style:background-color={element.backgroundColor || 'transparent'}
 	style:border-radius={`${element.borderRadius || 0}%`}
 	style:opacity={element.opacity || 1}
-	style:border={`${element.borderWidth || 0}px ${element.borderStyle || 'solid'} ${element.borderColor || '#000000'}`}
+	style:border={`${borderWidth}px ${element.borderStyle || 'solid'} ${element.borderColor || '#000000'}`}
 	style:box-shadow={element.boxShadow || ''}
 	style:background-image={element.src ? `url(${element.src})` : 'none'}
 	style:background-size={backgroundSize}

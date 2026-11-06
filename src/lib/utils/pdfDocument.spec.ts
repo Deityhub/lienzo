@@ -1,27 +1,20 @@
 import { PDFDocument } from '@cantoo/pdf-lib';
 import { describe, expect, it } from 'vitest';
 import { parseDocumentFile, serializeDocuments } from './documentFile';
-import { buildPdf, extractEmbeddedDocument } from './pdfDocument';
+import { createPdf, extractEmbeddedDocument, finishPdf } from './pdfDocument';
 import { sampleDoc } from './testDocument';
 
-// 1x1 transparent PNG
-const PNG = Uint8Array.from(
-	atob(
-		'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=='
-	),
-	(c) => c.charCodeAt(0)
-);
-const A4 = { widthMm: 210, heightMm: 297 };
+async function buildPdf(json: string, title = 'Doc') {
+	const pdf = await createPdf(title);
+	pdf.addPage([595.28, 841.89]);
+	return finishPdf(pdf, json);
+}
 
 describe('pdfDocument', () => {
-	it('builds one A4 page per image, with title and producer', async () => {
-		const bytes = await buildPdf([PNG, PNG], A4, '{}', 'My Resume');
-
-		const pdf = await PDFDocument.load(bytes, { updateMetadata: false });
-		expect(pdf.getPageCount()).toBe(2);
-		const { width, height } = pdf.getPage(0).getSize();
-		expect(width).toBeCloseTo(595.28, 1);
-		expect(height).toBeCloseTo(841.89, 1);
+	it('sets title and producer', async () => {
+		const pdf = await PDFDocument.load(await buildPdf('{}', 'My Resume'), {
+			updateMetadata: false
+		});
 		expect(pdf.getTitle()).toBe('My Resume');
 		expect(pdf.getProducer()).toMatch(/^Lienzo /);
 	});
@@ -30,7 +23,7 @@ describe('pdfDocument', () => {
 		const doc = sampleDoc('a', 'Résumé – ünïcode');
 		const json = serializeDocuments([doc]);
 
-		const bytes = await buildPdf([PNG], A4, json, doc.name);
+		const bytes = await buildPdf(json, doc.name);
 		const text = await extractEmbeddedDocument(bytes);
 
 		expect(text).toBe(json);

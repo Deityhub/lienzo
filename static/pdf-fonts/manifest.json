@@ -1,0 +1,285 @@
+{
+ "Inter": {
+  "italic": {
+   "100": "inter-italic-100.woff",
+   "200": "inter-italic-200.woff",
+   "300": "inter-italic-300.woff",
+   "400": "inter-italic-400.woff",
+   "500": "inter-italic-500.woff",
+   "600": "inter-italic-600.woff",
+   "700": "inter-italic-700.woff",
+   "800": "inter-italic-800.woff",
+   "900": "inter-italic-900.woff"
+  },
+  "normal": {
+   "100": "inter-normal-100.woff",
+   "200": "inter-normal-200.woff",
+   "300": "inter-normal-300.woff",
+   "400": "inter-normal-400.woff",
+   "500": "inter-normal-500.woff",
+   "600": "inter-normal-600.woff",
+   "700": "inter-normal-700.woff",
+   "800": "inter-normal-800.woff",
+   "900": "inter-normal-900.woff"
+  }
+ },
+ "Lato": {
+  "italic": {
+   "100": "lato-italic-100.woff",
+   "300": "lato-italic-300.woff",
+   "400": "lato-italic-400.woff",
+   "700": "lato-italic-700.woff",
+   "900": "lato-italic-900.woff"
+  },
+  "normal": {
+   "100": "lato-normal-100.woff",
+   "300": "lato-normal-300.woff",
+   "400": "lato-normal-400.woff",
+   "700": "lato-normal-700.woff",
+   "900": "lato-normal-900.woff"
+  }
+ },
+ "Merriweather": {
+  "italic": {
+   "300": "merriweather-italic-300.woff",
+   "400": "merriweather-italic-400.woff",
+   "500": "merriweather-italic-500.woff",
+   "600": "merriweather-italic-600.woff",
+   "700": "merriweather-italic-700.woff",
+   "800": "merriweather-italic-800.woff",
+   "900": "merriweather-italic-900.woff"
+  },
+  "normal": {
+   "300": "merriweather-normal-300.woff",
+   "400": "merriweather-normal-400.woff",
+   "500": "merriweather-normal-500.woff",
+   "600": "merriweather-normal-600.woff",
+   "700": "merriweather-normal-700.woff",
+   "800": "merriweather-normal-800.woff",
+   "900": "merriweather-normal-900.woff"
+  }
+ },
+ "Montserrat": {
+  "italic": {
+   "100": "montserrat-italic-100.woff",
+   "200": "montserrat-italic-200.woff",
+   "300": "montserrat-italic-300.woff",
+   "400": "montserrat-italic-400.woff",
+   "500": "montserrat-italic-500.woff",
+   "600": "montserrat-italic-600.woff",
+   "700": "montserrat-italic-700.woff",
+   "800": "montserrat-italic-800.woff",
+   "900": "montserrat-italic-900.woff"
+  },
+  "normal": {
+   "100": "montserrat-normal-100.woff",
+   "200": "montserrat-normal-200.woff",
+   "300": "montserrat-normal-300.woff",
+   "400": "montserrat-normal-400.woff",
+   "500": "montserrat-normal-500.woff",
+   "600": "montserrat-normal-600.woff",
+   "700": "montserrat-normal-700.woff",
+   "800": "montserrat-normal-800.woff",
+   "900": "montserrat-normal-900.woff"
+  }
+ },
+ "Nunito": {
+  "italic": {
+   "200": "nunito-italic-200.woff",
+   "300": "nunito-italic-300.woff",
+   "400": "nunito-italic-400.woff",
+   "500": "nunito-italic-500.woff",
+   "600": "nunito-italic-600.woff",
+   "700": "nunito-italic-700.woff",
+   "800": "nunito-italic-800.woff",
+   "900": "nunito-italic-900.woff"
+  },
+  "normal": {
+   "200": "nunito-normal-200.woff",
+   "300": "nunito-normal-300.woff",
+   "400": "nunito-normal-400.woff",
+   "500": "nunito-normal-500.woff",
+   "600": "nunito-normal-600.woff",
+   "700": "nunito-normal-700.woff",
+   "800": "nunito-normal-800.woff",
+   "900": "nunito-normal-900.woff"
+  }
+ },
+ "Open Sans": {
+  "italic": {
+   "300": "open-sans-italic-300.woff",
+   "400": "open-sans-italic-400.woff",
+   "500": "open-sans-italic-500.woff",
+   "600": "open-sans-italic-600.woff",
+   "700": "open-sans-italic-700.woff",
+   "800": "open-sans-italic-800.woff"
+  },
+  "normal": {
+   "300": "open-sans-normal-300.woff",
+   "400": "open-sans-normal-400.woff",
+   "500": "open-sans-normal-500.woff",
+   "600": "open-sans-normal-600.woff",
+   "700": "open-sans-normal-700.woff",
+   "800": "open-sans-normal-800.woff"
+  }
+ },
+ "Oswald": {
+  "normal": {
+   "200": "oswald-normal-200.woff",
+   "300": "oswald-normal-300.woff",
+   "400": "oswald-normal-400.woff",
+   "500": "oswald-normal-500.woff",
+   "600": "oswald-normal-600.woff",
+   "700": "oswald-normal-700.woff"
+  }
+ },
+ "Playfair Display": {
+  "italic": {
+   "400": "playfair-display-italic-400.woff",
+   "500": "playfair-display-italic-500.woff",
+   "600": "playfair-display-italic-600.woff",
+   "700": "playfair-display-italic-700.woff",
+   "800": "playfair-display-italic-800.woff",
+   "900": "playfair-display-italic-900.woff"
+  },
+  "normal": {
+   "400": "playfair-display-normal-400.woff",
+   "500": "playfair-display-normal-500.woff",
+   "600": "playfair-display-normal-600.woff",
+   "700": "playfair-display-normal-700.woff",
+   "800": "playfair-display-normal-800.woff",
+   "900": "playfair-display-normal-900.woff"
+  }
+ },
+ "Poppins": {
+  "italic": {
+   "100": "poppins-italic-100.woff",
+   "200": "poppins-italic-200.woff",
+   "300": "poppins-italic-300.woff",
+   "400": "poppins-italic-400.woff",
+   "500": "poppins-italic-500.woff",
+   "600": "poppins-italic-600.woff",
+   "700": "poppins-italic-700.woff",
+   "800": "poppins-italic-800.woff",
+   "900": "poppins-italic-900.woff"
+  },
+  "normal": {
+   "100": "poppins-normal-100.woff",
+   "200": "poppins-normal-200.woff",
+   "300": "poppins-normal-300.woff",
+   "400": "poppins-normal-400.woff",
+   "500": "poppins-normal-500.woff",
+   "600": "poppins-normal-600.woff",
+   "700": "poppins-normal-700.woff",
+   "800": "poppins-normal-800.woff",
+   "900": "poppins-normal-900.woff"
+  }
+ },
+ "Raleway": {
+  "italic": {
+   "100": "raleway-italic-100.woff",
+   "200": "raleway-italic-200.woff",
+   "300": "raleway-italic-300.woff",
+   "400": "raleway-italic-400.woff",
+   "500": "raleway-italic-500.woff",
+   "600": "raleway-italic-600.woff",
+   "700": "raleway-italic-700.woff",
+   "800": "raleway-italic-800.woff",
+   "900": "raleway-italic-900.woff"
+  },
+  "normal": {
+   "100": "raleway-normal-100.woff",
+   "200": "raleway-normal-200.woff",
+   "300": "raleway-normal-300.woff",
+   "400": "raleway-normal-400.woff",
+   "500": "raleway-normal-500.woff",
+   "600": "raleway-normal-600.woff",
+   "700": "raleway-normal-700.woff",
+   "800": "raleway-normal-800.woff",
+   "900": "raleway-normal-900.woff"
+  }
+ },
+ "Roboto": {
+  "italic": {
+   "100": "roboto-italic-100.woff",
+   "200": "roboto-italic-200.woff",
+   "300": "roboto-italic-300.woff",
+   "400": "roboto-italic-400.woff",
+   "500": "roboto-italic-500.woff",
+   "600": "roboto-italic-600.woff",
+   "700": "roboto-italic-700.woff",
+   "800": "roboto-italic-800.woff",
+   "900": "roboto-italic-900.woff"
+  },
+  "normal": {
+   "100": "roboto-normal-100.woff",
+   "200": "roboto-normal-200.woff",
+   "300": "roboto-normal-300.woff",
+   "400": "roboto-normal-400.woff",
+   "500": "roboto-normal-500.woff",
+   "600": "roboto-normal-600.woff",
+   "700": "roboto-normal-700.woff",
+   "800": "roboto-normal-800.woff",
+   "900": "roboto-normal-900.woff"
+  }
+ },
+ "Roboto Condensed": {
+  "italic": {
+   "100": "roboto-condensed-italic-100.woff",
+   "200": "roboto-condensed-italic-200.woff",
+   "300": "roboto-condensed-italic-300.woff",
+   "400": "roboto-condensed-italic-400.woff",
+   "500": "roboto-condensed-italic-500.woff",
+   "600": "roboto-condensed-italic-600.woff",
+   "700": "roboto-condensed-italic-700.woff",
+   "800": "roboto-condensed-italic-800.woff",
+   "900": "roboto-condensed-italic-900.woff"
+  },
+  "normal": {
+   "100": "roboto-condensed-normal-100.woff",
+   "200": "roboto-condensed-normal-200.woff",
+   "300": "roboto-condensed-normal-300.woff",
+   "400": "roboto-condensed-normal-400.woff",
+   "500": "roboto-condensed-normal-500.woff",
+   "600": "roboto-condensed-normal-600.woff",
+   "700": "roboto-condensed-normal-700.woff",
+   "800": "roboto-condensed-normal-800.woff",
+   "900": "roboto-condensed-normal-900.woff"
+  }
+ },
+ "Roboto Slab": {
+  "normal": {
+   "100": "roboto-slab-normal-100.woff",
+   "200": "roboto-slab-normal-200.woff",
+   "300": "roboto-slab-normal-300.woff",
+   "400": "roboto-slab-normal-400.woff",
+   "500": "roboto-slab-normal-500.woff",
+   "600": "roboto-slab-normal-600.woff",
+   "700": "roboto-slab-normal-700.woff",
+   "800": "roboto-slab-normal-800.woff",
+   "900": "roboto-slab-normal-900.woff"
+  }
+ },
+ "Source Code Pro": {
+  "italic": {
+   "200": "source-code-pro-italic-200.woff",
+   "300": "source-code-pro-italic-300.woff",
+   "400": "source-code-pro-italic-400.woff",
+   "500": "source-code-pro-italic-500.woff",
+   "600": "source-code-pro-italic-600.woff",
+   "700": "source-code-pro-italic-700.woff",
+   "800": "source-code-pro-italic-800.woff",
+   "900": "source-code-pro-italic-900.woff"
+  },
+  "normal": {
+   "200": "source-code-pro-normal-200.woff",
+   "300": "source-code-pro-normal-300.woff",
+   "400": "source-code-pro-normal-400.woff",
+   "500": "source-code-pro-normal-500.woff",
+   "600": "source-code-pro-normal-600.woff",
+   "700": "source-code-pro-normal-700.woff",
+   "800": "source-code-pro-normal-800.woff",
+   "900": "source-code-pro-normal-900.woff"
+  }
+ }
+}

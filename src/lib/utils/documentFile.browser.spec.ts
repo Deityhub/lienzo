@@ -7,7 +7,7 @@ import {
 	saveImportedDocuments,
 	serializeDocuments
 } from './documentFile';
-import { buildPdf } from './pdfDocument';
+import { createPdf, finishPdf } from './pdfDocument';
 import { sampleDoc } from './testDocument';
 import { PDFDocument } from '@cantoo/pdf-lib';
 
@@ -51,24 +51,18 @@ describe('readDocumentFiles', () => {
 	});
 });
 
-const PNG = Uint8Array.from(
-	atob(
-		'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=='
-	),
-	(c) => c.charCodeAt(0)
-);
+async function buildPdf(json: string, title: string) {
+	const pdf = await createPdf(title);
+	pdf.addPage([595.28, 841.89]);
+	return finishPdf(pdf, json);
+}
 const pdfFile = (name: string, bytes: Uint8Array) =>
 	new File([new Uint8Array(bytes)], name, { type: 'application/pdf' });
 
 describe('reading PDFs', () => {
 	it('reads the document embedded in a PDF exported from Lienzo', async () => {
 		const doc = sampleDoc('a', 'From PDF');
-		const bytes = await buildPdf(
-			[PNG],
-			{ widthMm: 210, heightMm: 297 },
-			serializeDocuments([doc]),
-			doc.name
-		);
+		const bytes = await buildPdf(serializeDocuments([doc]), doc.name);
 
 		const result = await readDocumentFiles([pdfFile('from-pdf.pdf', bytes)]);
 
@@ -91,12 +85,7 @@ describe('reading PDFs', () => {
 
 	it('recognises a PDF by its content, whatever the file is called', async () => {
 		const doc = sampleDoc('a', 'Renamed');
-		const bytes = await buildPdf(
-			[PNG],
-			{ widthMm: 210, heightMm: 297 },
-			serializeDocuments([doc]),
-			doc.name
-		);
+		const bytes = await buildPdf(serializeDocuments([doc]), doc.name);
 
 		const result = await readDocumentFiles([new File([new Uint8Array(bytes)], 'no-extension')]);
 

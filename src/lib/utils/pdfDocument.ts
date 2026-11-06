@@ -12,32 +12,20 @@ import {
 /** Name of the file attached to every PDF exported by Lienzo; it holds the editable document. */
 export const ATTACHMENT_NAME = 'lienzo-document.json';
 
-const MM_PER_INCH = 25.4;
-const POINTS_PER_INCH = 72;
-const mmToPoints = (mm: number) => (mm / MM_PER_INCH) * POINTS_PER_INCH;
-
-/**
- * Build a PDF from page images and attach the document JSON, so the PDF can be
- * imported back into Lienzo with everything still editable.
- */
-export async function buildPdf(
-	pagePngs: Uint8Array[],
-	size: { widthMm: number; heightMm: number },
-	documentJson: string,
-	title: string
-): Promise<Uint8Array> {
+/** A new, empty PDF with Lienzo's metadata. */
+export async function createPdf(title: string): Promise<PDFDocument> {
 	const pdf = await PDFDocument.create();
 	pdf.setTitle(title);
 	pdf.setCreator('Lienzo');
 	pdf.setProducer(`Lienzo ${__APP_VERSION__}`);
+	return pdf;
+}
 
-	const width = mmToPoints(size.widthMm);
-	const height = mmToPoints(size.heightMm);
-	for (const png of pagePngs) {
-		const page = pdf.addPage([width, height]);
-		page.drawImage(await pdf.embedPng(png), { x: 0, y: 0, width, height });
-	}
-
+/**
+ * Attach the document JSON and save. The PDF can then be imported back into Lienzo
+ * with everything still editable.
+ */
+export async function finishPdf(pdf: PDFDocument, documentJson: string): Promise<Uint8Array> {
 	await pdf.attach(new TextEncoder().encode(documentJson), ATTACHMENT_NAME, {
 		mimeType: 'application/json',
 		description: 'Editable Lienzo document',
