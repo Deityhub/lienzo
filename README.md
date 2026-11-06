@@ -1,327 +1,67 @@
 # Lienzo
 
-A modern, open-source document builder built with Svelte 5, TypeScript, and Tailwind CSS. Create professional documents (resumes, invoices, letters, and more) with an intuitive drag-and-drop canvas interface, featuring advanced ruler boundaries and real-time editing capabilities.
+A free document builder for A4 pages. Place text, shapes and images, start from a template, and export a PDF that keeps real, selectable text and carries your editable document inside it. No account, and nothing leaves your browser.
 
-![CI](https://github.com/Deityhub/lienzo/workflows/CI/badge.svg)
-![PR Checks](https://github.com/Deityhub/lienzo/workflows/PR%20Checks/badge.svg)
+[![CI](https://github.com/Deityhub/lienzo/actions/workflows/ci.yml/badge.svg)](https://github.com/Deityhub/lienzo/actions/workflows/ci.yml)
+[![License: GPL v3](https://img.shields.io/badge/license-GPLv3-blue.svg)](LICENSE)
 
-## 🚀 Features
+**Try it: <https://lienzo.deityhub.com>**
 
-### Core Features
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/editor-dark.png">
+  <img alt="The Lienzo editor with an invoice template open" src="docs/screenshots/editor-light.png">
+</picture>
 
-- **Drag-and-Drop Interface**: Intuitive canvas-based document creation with real-time preview
-- **Multiple Element Types**: Text, shapes, and images with full customization
-- **Real-time Editing**: Live preview with instant updates and inline text editing
-- **Multi-page Support**: Create documents with unlimited pages
-- **Nested Elements**: Elements can contain other elements (hierarchical structure)
-- **UUID-based IDs**: Cryptographically secure unique identifiers for all elements
-- **Backup & Transfer**: Export documents to a `.lienzo.json` file and import them back (see below)
-- **Versatile Use Cases**: Perfect for resumes, invoices, letters, certificates, and more
+## What you can do
 
-### Advanced Canvas Tools
+- **Design on a canvas.** Add text, shapes (rectangles, circles, triangles, lines, arrows and more) and images, then move, resize, layer and style them. Rulers set the margins of each page, and elements stay inside them.
+- **Start from a template.** 22 ready-made layouts: resumes, letters, invoices, flyers, certificates, menus, planners and more. Each is a normal document, so you can change anything.
+- **Work with several elements.** Select many at once, group them, copy, cut, paste and duplicate (also between documents and tabs), and move them to another page. Pictures can be pasted straight in.
+- **Never lose work.** Documents save automatically in your browser a moment after each change.
+- **Export a real PDF.** Text stays text and shapes stay vector, with fonts embedded. The editable document is stored inside the PDF, so importing that PDF later brings your design back.
+- **Back up and move.** Export one document or all of them as `.lienzo.json` files, and import them in another browser or on another device.
+- **Light, dark or system theme,** and a layout that works on a phone. The page you design is always white, so a document looks the same in every theme.
+- **14 font families,** loaded only when a document uses them.
 
-- **Professional Ruler System**:
-  - Horizontal and vertical rulers with tick marks (major, minor, tiny)
-  - Draggable triangle markers for boundary adjustment
-  - Real-time boundary visualization
-- **Smart Element Positioning**:
-  - Snap-to-grid with 10px threshold
-  - Boundary enforcement (elements stay within defined areas)
-  - Dynamic sizing based on drop position
-  - Automatic element reparenting on drag
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/templates-dark.png">
+  <img alt="The template gallery" src="docs/screenshots/templates-light.png">
+</picture>
 
-- **Advanced Resize Tool**:
-  - 4 edge handles for width/height adjustment
-  - 4 corner handles for proportional resize
-  - Minimum size enforcement (20px)
-  - Visual feedback with hover states
+## Run it yourself
 
-### Element Management
-
-- **Text Elements**:
-  - Inline contenteditable text
-  - Font family, size, weight, and style customization
-  - Color picker
-  - Full typography control
-
-- **Shape Elements**:
-  - **Basic Shapes**: Rectangle, Circle, Ellipse, Triangle, Diamond, Hexagon, Pentagon
-  - **Lines & Arrows**: Horizontal, Vertical, and Directional Arrows (up, down, left, right)
-  - **Styling Options**:
-    - Custom stroke color and width
-    - Fill color with opacity control
-    - Stroke styles: solid, dashed, or dotted
-    - Corner radius for rectangles
-    - Rotation support
-  - **Use Cases**:
-    - Visual dividers and section breaks
-    - Decorative elements and icons
-    - Flow charts and diagrams
-    - Highlighting important content
-
-- **Image Elements**:
-  - URL-based image loading
-  - Alt text support
-  - Responsive sizing
-
-### Visual Feedback System
-
-- **Element Highlighting**:
-  - Blue ring: Selected element
-  - Yellow ring: Elements underneath (overlapping)
-  - Green ring: Element being hovered during drag
-  - Purple dashed outline: Drag preview
-- **Drag Operations**:
-  - Real-time drag preview
-  - ESC key to cancel drag
-  - Automatic cleanup on drag leave
-  - Parent detection and highlighting
-
-### Property Panel
-
-- **Position & Size**: Precise X, Y, width, height controls
-- **Typography**: Font family, size, weight, style, color
-- **Shape Properties**: Type, stroke color, stroke width
-- **Image Properties**: URL, alt text
-- **Element Actions**: Delete button with confirmation
-
-## 🛠️ Technology Stack
-
-- **Framework**: Svelte 5 (SvelteKit)
-- **Language**: TypeScript
-- **Styling**: Tailwind CSS
-- **Build Tool**: Vite
-- **Testing**: Vitest + Playwright
-- **Code Quality**: ESLint + Prettier
-- **Deployment**: Vercel, or Docker (GHCR and Docker Hub)
-
-## 📋 Prerequisites
-
-- **Node.js** 22 (see `.nvmrc`)
-- **Yarn** 4 (run `corepack enable`; the version is pinned via `packageManager`)
-- **Git**
-
-## 🚀 Quick Start
-
-### Installation
-
-1. **Clone the repository**
-
-   ```bash
-   git clone https://github.com/your-username/lienzo.git
-   cd lienzo
-   ```
-
-2. **Install dependencies**
-
-   ```bash
-   yarn install
-   ```
-
-3. **Start development server**
-
-   ```bash
-   yarn dev
-   ```
-
-4. **Open your browser**
-   Navigate to `http://localhost:5173`
-
-### Build for Production
+You need Node.js 22 (see `.nvmrc`) and Yarn 4 (`corepack enable` picks the pinned version).
 
 ```bash
-# Build the application
-yarn build
-
-# Preview production build
-yarn preview
+git clone https://github.com/Deityhub/lienzo.git
+cd lienzo
+yarn install
+yarn dev            # http://localhost:5173
 ```
 
-## 🎨 Key Components
-
-### Canvas
-
-The main canvas component that handles:
-
-- Element rendering with zIndex sorting
-- Drag-and-drop with real-time preview
-- Boundary enforcement and snapping
-- Ruler integration and visualization
-- Element reparenting on drag
-- Nested element flattening for display
-
-### Ruler System
-
-Professional boundary controls featuring:
-
-- Horizontal and vertical rulers (Google Docs style)
-- Draggable triangle markers (blue for start, red for end)
-- Three-tier tick marks:
-  - Major ticks (12px) every 100px
-  - Minor ticks (8px) every 50px
-  - Tiny ticks (4px) every 10px
-- Real-time boundary updates with reactive effects
-- Coordinate scaling for accurate positioning
-
-### Property Panel
-
-Comprehensive styling interface for:
-
-- Position and dimensions (X, Y, width, height)
-- Typography (7 font families, 12 font sizes)
-- Font weight (normal, bold) and style (normal, italic)
-- Color picker for text and shapes
-- Element-specific properties
-- Delete functionality
-
-### Resize Tool
-
-Advanced resize system with:
-
-- **4 Edge Handles**: 60px × 4px bars for width/height
-- **4 Corner Handles**: 12px circles for proportional resize
-- **8 Resize Directions**: n, s, e, w, nw, ne, sw, se
-- Visual feedback with hover states
-- Boundary-aware resizing
-
-## 🔧 Development
-
-### Available Scripts
-
-```bash
-# Development
-yarn dev              # Start development server
-yarn dev -- --open    # Open browser automatically
-
-# Building
-yarn build           # Production build
-yarn preview         # Preview production build
-
-# Code Quality
-yarn lint            # Run ESLint
-yarn format          # Format code with Prettier
-yarn check           # Type checking
-
-# Testing
-yarn test            # Run all tests
-yarn test:unit       # Unit tests only
-yarn test:e2e        # End-to-end tests
-```
-
-### Code Style
-
-This project follows:
-
-- **Prettier** for code formatting
-- **ESLint** for linting
-- **TypeScript** for type safety
-- **Svelte 5** syntax and patterns
-
-### Key Development Patterns
-
-1. **State Management**: Uses Svelte 5 runes (`$state`, `$derived`)
-2. **Component Architecture**: Functional components with clear props
-3. **TypeScript**: Full type safety across the application
-4. **Responsive Design**: Mobile-first approach with Tailwind CSS
-
-## 🎯 Usage Guide
-
-### Creating a Document
-
-1. **Navigate to Builder**: Click "Start Building" from the homepage
-2. **Add Elements**: Drag text, shapes, or images from the toolbar
-3. **Customize Elements**: Select elements to edit properties in the panel
-4. **Adjust Boundaries**: Drag ruler markers to set canvas boundaries
-5. **Multi-page Support**: Add additional pages as needed
-6. **Save & Export**: Your work is saved automatically in your browser a moment after each change (a new document is called "Untitled document" until you name it with **Save**). Export it as a PDF when you are done
-7. **Light or dark**: The switch in the header changes the theme. It starts from your system setting and remembers your choice. The page you design is always white, so a document looks the same in both.
-
-### Element Manipulation
-
-- **Move**: Click and drag elements on the canvas
-- **Resize**: Use corner handles on selected elements
-- **Edit**: Select elements to modify properties in the panel
-- **Delete**: Use the delete button in the property panel
-
-### Boundary System
-
-- **Set Boundaries**: Drag triangle markers on rulers
-- **Snap-to-Grid**: Elements automatically align to boundaries
-- **Boundary Enforcement**: Elements cannot move outside defined areas
-- **Auto-constrain**: Elements automatically adjust when boundaries change
-
-## 🧪 Testing
-
-This project has comprehensive test coverage for most features.
-
-### Unit Tests
-
-```bash
-yarn test:unit
-```
-
-**Test Coverage:**
-
-- ✅ Page Management (create, delete, UUID generation)
-- ✅ Ruler Boundaries (initialization, updates, validation)
-- ✅ Element Management (add, update, delete, UUID generation)
-- ✅ Element Selection (select, deselect)
-- ✅ Nested Elements (parent-child relationships, finding, moving)
-- ✅ zIndex Management (automatic assignment)
-- ✅ Store State Management (reactive updates)
-
-**Total Unit Tests**: 20+ tests covering all store functionality
-
-### End-to-End Tests
-
-```bash
-yarn test:e2e
-```
-
-**Test Coverage:**
-
-- ✅ Navigation (home, create, about pages)
-- ✅ Page Management (add pages, page counter)
-- ✅ Drag and Drop (text, shape, image elements)
-- ✅ Element Selection (select, deselect)
-- ✅ Element Manipulation (resize handles, delete)
-- ✅ Property Updates (font size, font family)
-- ✅ UI Components (toolbar, canvas, property panel, rulers)
-- ✅ Boundary Visualization (rulers, boundary box)
-- ✅ Multi-element Workflows (adding multiple elements)
-
-**Total E2E Tests**: 14 comprehensive workflow tests
-
-### Run All Tests
-
-```bash
-yarn test
-```
-
-This runs both unit and e2e tests sequentially.
-
-## 🚀 Deployment
-
-### Vercel (Recommended)
-
-1. **Connect Repository**: Link your GitHub repository to Vercel
-2. **Automatic Deployments**: Every push to main branch triggers deployment
-3. **Environment Variables**: Configure any required environment variables
+| Command                 | What it does                                                |
+| ----------------------- | ----------------------------------------------------------- |
+| `yarn build`            | Production build (targets Vercel)                           |
+| `yarn preview`          | Serve the production build                                  |
+| `yarn lint`             | Prettier and ESLint checks                                  |
+| `yarn format`           | Format the code                                             |
+| `yarn check`            | Type check                                                  |
+| `yarn test:unit:run`    | Unit and browser-component tests (Vitest)                   |
+| `yarn test:e2e`         | End-to-end tests (Playwright; builds the app first)         |
+| `yarn test`             | Both test suites                                            |
+| `yarn brand:assets`     | Regenerate the favicons, app icons and social image         |
+| `yarn docs:screenshots` | Retake the screenshots in this README                       |
+| `yarn notices`          | Regenerate [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) |
 
 ### Docker
 
-A multi-arch (amd64/arm64) image is published to GitHub Container Registry and Docker Hub on every release:
+A multi-arch (amd64 and arm64) image is published to GitHub Container Registry and Docker Hub with every release.
 
 ```bash
 docker run -p 3000:3000 -e ORIGIN=http://localhost:3000 ghcr.io/deityhub/lienzo:latest
 ```
 
-The same image is on Docker Hub as `deityhub/lienzo`. Pin a version with a tag instead of `latest` (e.g. `ghcr.io/deityhub/lienzo:1.1.0`). To build it yourself:
-
-```bash
-docker build -t lienzo .
-docker compose up --build   # http://localhost:3000
-```
+The same image is on Docker Hub as `deityhub/lienzo`. Use a version tag instead of `latest` to pin a release, for example `ghcr.io/deityhub/lienzo:1.1.0`. To build it yourself, run `docker compose up --build` (<http://localhost:3000>).
 
 | Variable | Default                  | Description                                                        |
 | -------- | ------------------------ | ------------------------------------------------------------------ |
@@ -329,80 +69,40 @@ docker compose up --build   # http://localhost:3000
 | `PORT`   | `3000`                   | Port the server listens on                                         |
 | `HOST`   | `0.0.0.0`                | Interface the server binds to                                      |
 
-The image is built with `adapter-node` (`ADAPTER=node`); the default `yarn build` keeps targeting Vercel. Without Docker: `ADAPTER=node yarn build && node build`.
+The image uses `adapter-node` (`ADAPTER=node`); the default build targets Vercel. Without Docker: `ADAPTER=node yarn build && node build`.
 
-## 🤝 Contributing
+## Your documents and your data
 
-We welcome contributions! Here's how to get involved:
+Documents are stored only in your browser (IndexedDB). There is no server-side storage and no account, so export your documents to keep a backup or to move them. On the **Documents** page:
 
-### Getting Started
+- **Export** on a card downloads that document as `<name>.lienzo.json`, and **Export all** downloads everything in one file.
+- **Import** reads `.lienzo.json` files and PDFs exported from Lienzo. If a document with the same id already exists, you choose **Replace existing** or **Keep both**. Documents from older versions are upgraded automatically, and invalid ones are skipped and listed.
+- In the editor, **Import** loads a single document as a new one, so saving never overwrites an existing document.
 
-1. **Fork** the repository
-2. **Clone** your fork
-3. **Create** a feature branch: `git checkout -b feature/amazing-feature`
-4. **Install** dependencies: `yarn install`
-5. **Start** development: `yarn dev`
+**About the PDF.** Every PDF exported from Lienzo has the editable document embedded as an attachment (`lienzo-document.json`), so the PDF you share is also a full backup. PDFs from other tools hold no such data and cannot be imported. Limits: characters outside Latin and Latin-extended show as `?`, images from sites that block downloads are left blank (you are told), image shadows are not drawn, and a PDF editor edits text line by line.
 
-### Contribution Guidelines
+Images are kept inside the document when you paste a picture, and by address when you give a URL, in which case the address must stay reachable.
 
-1. **Code Style**: Follow existing patterns and run `yarn format`
-2. **Tests**: Add tests for new features
-3. **Documentation**: Update README for significant changes
-4. **Pull Requests**: Use a [Conventional Commits](https://www.conventionalcommits.org/) title (e.g. `feat: add text alignment`, `fix: resize handle offset`). It is checked in CI and drives versioning
+## Built with
 
-### Development Workflow
+[Svelte 5](https://svelte.dev/) and [SvelteKit](https://svelte.dev/docs/kit), TypeScript, [Tailwind CSS](https://tailwindcss.com/) 4, Vite, [pdf-lib](https://github.com/cantoo-scribe/pdf-lib) for the PDF, and [Lucide](https://lucide.dev/) icons. Tested with Vitest and Playwright. Deployed on Vercel, or as a Docker image. The visual design follows [Fluent 2](https://fluent2.microsoft.design/). Everything that ships with the app, with its license, is listed in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
-1. Create a feature branch
-2. Make your changes
-3. Add tests if applicable
-4. Run the test suite: `yarn test`
-5. Format code: `yarn format`
-6. Submit a pull request
+```
+src/lib/canvas      editing behaviour: dragging, resizing, selection, autosave, clipboard
+src/lib/pdf         the PDF exporter
+src/lib/stores      app state and the IndexedDB layer, with migrations
+src/lib/templates   the template catalogue
+src/lib/utils       pure helpers: geometry, file formats, sorting
+src/routes          home, templates, documents and the editor
+e2e                 end-to-end tests
+```
 
-## 💾 Backup & Transfer
+## Contributing
 
-Documents are stored only in your browser (IndexedDB), so export them to keep a backup or move them to another browser or device. On the **Documents** page:
+Contributions are welcome. Please read [CONTRIBUTING.md](CONTRIBUTING.md) first (it covers setup, checks, commit titles and releases) and follow the [Code of Conduct](CODE_OF_CONDUCT.md). To report a security problem, see [SECURITY.md](SECURITY.md). Changes are listed in the [CHANGELOG](CHANGELOG.md).
 
-- **Export** (on a document card) downloads that document as `<name>.lienzo.json`.
-- **Export all** downloads every document in one `lienzo-documents-<date>.lienzo.json` file.
-- **Import** reads one or more `.lienzo.json` files. New documents are added as they are. If a document with the same id is already in your library, you choose **Replace existing** (overwrites it) or **Keep both** (imports a separate copy, with `(imported)` appended to the name). Documents from older versions are upgraded automatically; invalid ones are skipped and listed.
+## License
 
-**PDF export is real text and vector shapes, not a screenshot.** Text can be selected and edited in a PDF editor, and fonts are embedded (only the characters you use). Limits: characters outside Latin and Latin-extended show as `?`, images from other websites that block downloads are left blank (you are told when that happens), image shadows are not drawn, and text lines are separate text runs, so a PDF editor edits them line by line. The export fonts are generated from the editor fonts with `python3 scripts/generate-pdf-fonts.py` (needs `fonttools` and `brotli`); re-run it when a font is added.
+Lienzo is open source under the [GNU GPLv3](LICENSE). Third-party software and fonts keep their own licenses; see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
-**PDFs exported from Lienzo can be imported too.** Every exported PDF has the editable document embedded inside it (as an attachment named `lienzo-document.json`), so the PDF you share is also a full backup. Choose it in either Import button, on the Documents page or in the editor. PDFs that were not exported from Lienzo contain no document data and cannot be imported. Import detects PDFs by content, so renaming the file does not matter.
-
-In the **editor**, the Import button loads a single-document file into the canvas, replacing its current content (you are asked first if the canvas is not empty). It is loaded as a new document, so saving it never overwrites an existing one.
-
-Image elements store a URL, so an imported document needs those images to still be reachable.
-
-## 🏷️ Versioning & Releases
-
-Lienzo follows [Semantic Versioning](https://semver.org/) and keeps a [CHANGELOG](CHANGELOG.md) generated from [Conventional Commits](https://www.conventionalcommits.org/). PRs are squash-merged into `develop` with a Conventional Commit title (`feat:`, `fix:`, `perf:`, `refactor:`, `docs:` appear in the changelog; `chore:`, `ci:`, `test:` etc. do not).
-
-To cut a release:
-
-1. **Prepare:** In GitHub, go to Actions → **Prepare Release** → Run workflow on `develop` and choose `patch`, `minor` or `major`. It opens a `chore(release): vX.Y.Z` PR into `develop` that bumps `package.json` and updates `CHANGELOG.md`.
-2. **Merge** that PR into `develop`.
-3. **Publish:** Open a PR from `develop` into `main` and merge it (use a merge commit so branches stay aligned). The **Release** workflow tags `vX.Y.Z` and creates the GitHub Release with the changelog notes.
-
-The running version is shown in the landing page footer. To make CI run on the release PR, add a personal access token as the repo secret `RELEASE_TOKEN`.
-
-## 📝 License
-
-This project is open source and available under the [GNU GPLv3 License](LICENSE).
-
-## 🙏 Acknowledgments
-
-- Built with [Svelte 5](https://svelte.dev/) and [SvelteKit](https://svelte.dev/docs/kit)
-- Styled with [Tailwind CSS](https://tailwindcss.com/)
-- Icons from [Lucide Svelte](https://lucide.dev/)
-
-## 📞 Support
-
-- **Issues**: Use GitHub Issues for bug reports and feature requests
-- **Discussions**: Use GitHub Discussions for questions and ideas
-- **Contributing**: See our contributing guidelines above
-
----
-
-**Made with ❤️ by [Deityhub](https://github.com/Deityhub) - Create beautiful documents with ease**
+Made by [Chizoba Jude Ojini](https://judeojini.com).
