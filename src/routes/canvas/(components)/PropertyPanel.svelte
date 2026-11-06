@@ -6,6 +6,7 @@
 	import PositionSize from './property-panels/PositionSize.svelte';
 	import Layering from './property-panels/Layering.svelte';
 	import MoveToPage from './property-panels/MoveToPage.svelte';
+	import ClipboardActions from './property-panels/ClipboardActions.svelte';
 	import TextProperties from './property-panels/TextProperties.svelte';
 	import ShapeProperties from './property-panels/ShapeProperties.svelte';
 	import ImageProperties from './property-panels/ImageProperties.svelte';
@@ -54,6 +55,7 @@
 					onChange={handlePropertyChange}
 				/>
 				<Layering element={selectedElement} />
+				<ClipboardActions />
 				<MoveToPage />
 
 				{#if selectedElement.type === 'text'}
@@ -114,6 +116,7 @@
 						Ungroup
 					</Button>
 				{/if}
+				<ClipboardActions />
 				<MoveToPage />
 				<Button
 					data-testid="delete-selected-btn"

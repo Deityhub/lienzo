@@ -4,7 +4,8 @@
 	import { appStore } from '$lib/stores/appStore.svelte.ts';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import { BoxSelect, Download, Plus, Save, Upload } from '@lucide/svelte';
+	import { BoxSelect, ClipboardPaste, Download, Plus, Save, Upload } from '@lucide/svelte';
+	import { clipboard } from '$lib/canvas/clipboard.svelte';
 	import type { SaveStatus } from '$lib/canvas/autosave.svelte';
 
 	interface Props {
@@ -90,6 +91,13 @@
 					>
 						<BoxSelect class="mr-2 h-4 w-4" />
 						Select multiple
+					</Button>
+				</span>
+				<!-- Pastes onto the page last clicked; clicking it must not clear the selection -->
+				<span data-keep-selection>
+					<Button onClick={() => clipboard.paste()} variant="secondary" data-testid="paste-btn">
+						<ClipboardPaste class="mr-2 h-4 w-4" />
+						Paste
 					</Button>
 				</span>
 				<div class="mr-4 flex items-baseline gap-2">

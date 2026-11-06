@@ -244,6 +244,7 @@
 				style:width="{width * scale}px"
 				style:height="{height * scale}px"
 				style:touch-action={multiSelectMode ? 'none' : undefined}
+				onpointerdowncapture={() => appStore.setActivePage(page.id)}
 				onclick={handleCanvasClick}
 				onpointerdown={(e) => {
 					// Touch screens scroll with a finger, so a selection box needs the select-multiple mode there

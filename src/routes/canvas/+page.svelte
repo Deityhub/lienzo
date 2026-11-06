@@ -16,6 +16,7 @@
 	import { saveCurrentDocument } from '$lib/canvas/saveDocument';
 	import { createCanvasImport } from '$lib/canvas/canvasImport.svelte';
 	import { createAutosave } from '$lib/canvas/autosave.svelte';
+	import { clipboard } from '$lib/canvas/clipboard.svelte';
 	import { onMount } from 'svelte';
 	import { browser } from '$app/environment';
 	import { goto } from '$app/navigation';
@@ -137,6 +138,9 @@
 					selected.map((el) => el.id),
 					selected[0].pageId
 				);
+			} else if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'd') {
+				event.preventDefault(); // Ctrl/Cmd+D duplicates (the browser would bookmark the page)
+				clipboard.duplicate();
 			} else if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'g') {
 				event.preventDefault(); // Ctrl/Cmd+G groups, with Shift it ungroups
 				if (event.shiftKey) appStore.ungroupSelected();
@@ -144,12 +148,14 @@
 			}
 		};
 		document.addEventListener('keydown', selectionShortcuts);
+		const stopClipboard = clipboard.attach(); // copy, cut and paste
 		document.addEventListener('visibilitychange', flush);
 		window.addEventListener('pagehide', flush);
 		window.addEventListener('beforeunload', warn);
 
 		return () => {
 			stopTracking();
+			stopClipboard();
 			document.removeEventListener('keydown', selectionShortcuts);
 			document.removeEventListener('visibilitychange', flush);
 			window.removeEventListener('pagehide', flush);

@@ -47,6 +47,8 @@ const createAppStore = () => {
 	let selection: { pageId: string; ids: string[] } = $state({ pageId: '', ids: [] });
 	// Taps select several elements instead of one: for touch screens, which have no Shift key
 	let multiSelectMode = $state(false);
+	// The page last clicked, where pasted elements go
+	let activePageId = $state<string | null>(null);
 
 	// Helper to get next zIndex for a page
 	const getNextZIndex = (pageId: string): number => {
@@ -164,6 +166,13 @@ const createAppStore = () => {
 	};
 
 	const isSelected = (elementId: string) => selection.ids.includes(elementId);
+
+	/** The page last clicked, if it still exists. */
+	const getActivePageId = () =>
+		activePageId && currentDocument.pages[activePageId] ? activePageId : null;
+	const setActivePage = (pageId: string | null) => {
+		activePageId = pageId;
+	};
 
 	const getMultiSelectMode = () => multiSelectMode;
 	const setMultiSelectMode = (on: boolean) => {
@@ -399,6 +408,28 @@ const createAppStore = () => {
 		}
 	};
 
+	/** Add ready-made elements to a page, on top of what is there, and select them. One change. */
+	const addElements = (pageId: string, elements: TCanvasElement[]) => {
+		const page = getPage(pageId);
+		if (!page || !elements.length) return;
+
+		const base = getNextZIndex(pageId);
+		const added = { ...page.elements };
+		[...elements]
+			.sort((a, b) => a.zIndex - b.zIndex)
+			.forEach((el, i) => {
+				added[el.id] = { ...el, pageId, zIndex: base + i };
+			});
+		updateDocumentPages({
+			...currentDocument.pages,
+			[pageId]: { ...page, elements: withoutLoneGroups(added) }
+		});
+		selectElements(
+			pageId,
+			elements.map((el) => el.id)
+		);
+	};
+
 	/** Delete several elements of a page at once. */
 	const deleteElements = (elementIds: string[], pageId: string) => {
 		const page = getPage(pageId);
@@ -562,6 +593,7 @@ const createAppStore = () => {
 		getSelectedElements,
 		isSelected,
 		getMultiSelectMode,
+		getActivePageId,
 		getCurrentDocument,
 		getPageElements,
 		getScale,
@@ -579,6 +611,8 @@ const createAppStore = () => {
 		selectElements,
 		toggleSelected,
 		setMultiSelectMode,
+		setActivePage,
+		addElements,
 		moveElements,
 		updateElements,
 		moveElementsToPage,
