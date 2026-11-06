@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { DISPLAY_SCALE } from '../const/dimension';
-import { displayScaleForWidth } from './viewport';
+import { displayScaleForWidth, textScale } from './viewport';
 
 describe('displayScaleForWidth', () => {
 	it('uses the full display scale on wide screens', () => {
@@ -25,5 +25,16 @@ describe('displayScaleForWidth', () => {
 			expect(scale).toBeGreaterThanOrEqual(previous);
 			previous = scale;
 		}
+	});
+});
+
+describe('textScale', () => {
+	it('leaves text unchanged at the full display scale', () => {
+		expect(textScale(DISPLAY_SCALE)).toBe(1);
+	});
+
+	it('shrinks text in proportion to the page', () => {
+		expect(textScale(DISPLAY_SCALE / 2)).toBe(0.5);
+		expect(textScale(0.12)).toBeCloseTo(0.343, 3);
 	});
 });

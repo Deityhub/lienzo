@@ -13,6 +13,14 @@ export function displayScaleForWidth(width: number): number {
 	return Number((MIN_SCALE + progress * (DISPLAY_SCALE - MIN_SCALE)).toFixed(3));
 }
 
+/**
+ * Text sizes are stored for the full display scale, so on smaller screens they shrink with the
+ * page and the text keeps the same proportions to it. Returns the factor for the given scale.
+ */
+export function textScale(scale: number): number {
+	return scale / DISPLAY_SCALE;
+}
+
 /** The narrowest of the viewport measurements, so the page fits on mobile browsers whatever they report. */
 export function viewportWidth(): number {
 	return Math.min(

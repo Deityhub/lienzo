@@ -1,9 +1,11 @@
 <script lang="ts">
 	import type { TextElement } from '$lib/types/canvas';
 	import { appStore } from '$lib/stores/appStore.svelte.ts';
+	import { textScale } from '$lib/utils/viewport';
 
 	const { element }: { element: TextElement } = $props();
 	const scale = $derived(appStore.getScale());
+	const textFactor = $derived(textScale(scale));
 
 	// Local copy of the text for two-way binding; it resets whenever the element's text changes
 	let textContent = $derived(element.text);
@@ -49,9 +51,10 @@
 
 <div class="relative h-full w-full overflow-hidden">
 	<textarea
-		class="absolute inset-0 h-auto min-h-full w-full cursor-move resize-none overflow-hidden border-none p-2 focus:outline-none"
+		class="absolute inset-0 h-auto min-h-full w-full cursor-move resize-none overflow-hidden border-none focus:outline-none"
 		style:font-family="{element.fontFamily}, sans-serif"
-		style:font-size="{element.fontSize}px"
+		style:padding="{8 * textFactor}px"
+		style:font-size="{element.fontSize * textFactor}px"
 		style:font-weight={element.fontWeight}
 		style:font-style={element.fontStyle}
 		style:text-decoration={element.textDecoration}
