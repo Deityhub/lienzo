@@ -1,6 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" version="1.1" xmlns:xlink="http://www.w3.org/1999/xlink" width="24" height="24"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <path d="M12 2L2 7L12 12L22 7L12 2Z" fill="#4F46E5"></path>
-  <path d="M2 17L12 22L22 17M2 12L12 17L22 12" stroke="#4F46E5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
-</svg><style>@media (prefers-color-scheme: light) { :root { filter: none; } }
-@media (prefers-color-scheme: dark) { :root { filter: none; } }
-</style></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="1 1 22 22" width="32" height="32">
+<style>.l{stroke:#0f6cbd}.f{fill:#0f6cbd}@media (prefers-color-scheme:dark){.l{stroke:#ffffff}.f{fill:#ffffff}}</style>
+<g class="l">
+<path class="f" d="M12 2L2 7L12 12L22 7L12 2Z" stroke-linejoin="round"/>
+<path d="M2 17L12 22L22 17" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M2 12L12 17L22 12" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+</g>
+</svg>
