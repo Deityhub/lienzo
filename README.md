@@ -233,7 +233,7 @@ This project follows:
 3. **Customize Elements**: Select elements to edit properties in the panel
 4. **Adjust Boundaries**: Drag ruler markers to set canvas boundaries
 5. **Multi-page Support**: Add additional pages as needed
-6. **Save & Export**: Save your document to locally or export as PDF
+6. **Save & Export**: Your work is saved automatically in your browser a moment after each change (a new document is called "Untitled document" until you name it with **Save**). Export it as a PDF when you are done
 
 ### Element Manipulation
 

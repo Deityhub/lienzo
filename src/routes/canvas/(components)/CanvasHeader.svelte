@@ -5,6 +5,7 @@
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { Download, Plus, Save, Upload } from '@lucide/svelte';
+	import type { SaveStatus } from '$lib/canvas/autosave.svelte';
 
 	interface Props {
 		pageCount: number;
@@ -12,13 +13,28 @@
 		busy: boolean;
 		/** Saving needs IndexedDB, which some browsers do not offer */
 		canSave: boolean;
+		/** Progress of the automatic saving */
+		saveStatus: SaveStatus;
+		saveError: string;
+		onRetrySave: () => void;
 		onBack: () => void;
 		onSave: () => void;
 		onExport: () => void;
 		onImportFile: (file: File) => void;
 	}
 
-	const { pageCount, busy, canSave, onBack, onSave, onExport, onImportFile }: Props = $props();
+	const {
+		pageCount,
+		busy,
+		canSave,
+		saveStatus,
+		saveError,
+		onRetrySave,
+		onBack,
+		onSave,
+		onExport,
+		onImportFile
+	}: Props = $props();
 
 	let importInput: HTMLInputElement | undefined = $state();
 
@@ -62,15 +78,39 @@
 					<Plus class="mr-2 h-4 w-4" />
 					Add Page
 				</Button>
-				<span class="mr-4 text-sm text-muted-foreground" data-testid="page-count">
-					{pageCount}
-					{pageCount > 1 ? 'Pages' : 'Page'}
-				</span>
+				<div class="mr-4 flex items-baseline gap-2">
+					<span class="text-sm text-muted-foreground" data-testid="page-count">
+						{pageCount}
+						{pageCount > 1 ? 'Pages' : 'Page'}
+					</span>
+
+					{#if canSave}
+						<span
+							class="text-xs {saveStatus === 'error'
+								? 'text-destructive'
+								: 'text-muted-foreground'}"
+							data-testid="save-status"
+							role="status"
+							title={saveError}
+						>
+							{#if saveStatus === 'saving'}
+								Saving…
+							{:else if saveStatus === 'saved'}
+								Saved
+							{:else if saveStatus === 'error'}
+								Could not save
+								<button class="underline" onclick={onRetrySave} data-testid="retry-save-btn"
+									>Retry</button
+								>
+							{/if}
+						</span>
+					{/if}
+				</div>
 			</div>
 		</div>
 
 		<div class="flex items-center gap-2">
-			<Button onClick={onBack} variant="ghost" data-testid="back-btn">Cancel</Button>
+			<Button onClick={onBack} variant="ghost" data-testid="back-btn">Back</Button>
 			<Button
 				disabled={busy}
 				onClick={() => importInput?.click()}
