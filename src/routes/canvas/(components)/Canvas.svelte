@@ -16,6 +16,7 @@
 	import { createElementResize } from '$lib/canvas/elementResize.svelte';
 	import { createGroupResize } from '$lib/canvas/groupResize.svelte';
 	import { createMarquee } from '$lib/canvas/marquee.svelte';
+	import { pageDrop } from '$lib/canvas/pageDrop.svelte';
 	import type { TCanvasElement } from '$lib/types/canvas';
 
 	const selectedElement = $derived(appStore.getSelectedElement());
@@ -66,6 +67,9 @@
 	let dragPreview = $state<{ x: number; y: number; width: number; height: number } | null>(null);
 	let hoveredElementId = $state<string | null>(null);
 	let highlightedElementIds = $state<string[]>([]);
+
+	// Elements from another page are being dragged over this one
+	const dropHere = $derived(pageDrop.target?.pageId === page.id ? pageDrop.target : null);
 
 	let canvasRef: HTMLDivElement;
 	let canvasPageRef: HTMLDivElement;
@@ -236,7 +240,7 @@
 				bind:this={canvasRef}
 				id={`canvas-${dataPageId}`}
 				data-testid="document-canvas"
-				class="relative bg-background shadow-lg"
+				class="relative bg-background shadow-lg {dropHere ? 'ring-4 ring-primary' : ''}"
 				style:width="{width * scale}px"
 				style:height="{height * scale}px"
 				style:touch-action={multiSelectMode ? 'none' : undefined}
@@ -314,6 +318,22 @@
 						/>
 					</div>
 				{/each}
+
+				<!-- Where elements dragged from another page would land -->
+				{#if dropHere}
+					{#each dropHere.rects as rect, i (i)}
+						<div
+							class="pointer-events-none absolute border-2 border-dashed border-primary bg-primary/10"
+							style:left={pixelsToPercent(rect.x, width)}
+							style:top={pixelsToPercent(rect.y, height)}
+							style:width={pixelsToPercent(rect.width, width)}
+							style:height={pixelsToPercent(rect.height, height)}
+							style:z-index="9999"
+							data-testid="page-drop-preview"
+							data-html2canvas-ignore
+						></div>
+					{/each}
+				{/if}
 
 				<!-- Box around a multiple selection, and the selection box being dragged -->
 				{#if selectionBox}

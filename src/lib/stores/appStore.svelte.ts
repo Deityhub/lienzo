@@ -1,5 +1,7 @@
 import { getDefaultProperties } from '$lib/utils/properties';
 import { uuidv4 } from '$lib/utils/uuid';
+import { boundingRect } from '$lib/utils/geometry';
+import { placeOnPage } from '$lib/utils/pageMove';
 import type {
 	ElementType,
 	DocumentData,
@@ -438,6 +440,60 @@ const createAppStore = () => {
 		updateDocumentPages({ ...currentDocument.pages, [pageId]: { ...page, elements } });
 	};
 
+	/**
+	 * Move elements to another page as one change. `updates` gives each element's new position and size;
+	 * they go on top of the other elements of the page and stay selected.
+	 */
+	const moveElementsToPage = (
+		fromPageId: string,
+		toPageId: string,
+		updates: Record<string, Partial<TCanvasElement>>
+	) => {
+		const from = getPage(fromPageId);
+		const to = getPage(toPageId);
+		if (!from || !to || from.id === to.id) return;
+
+		const moving = Object.keys(updates)
+			.flatMap((id) => (from.elements[id] ? [from.elements[id]] : []))
+			.sort((a, b) => a.zIndex - b.zIndex);
+		if (!moving.length) return;
+
+		const base = getNextZIndex(toPageId);
+		const fromElements = { ...from.elements };
+		const toElements = { ...to.elements };
+		moving.forEach((el, i) => {
+			delete fromElements[el.id];
+			toElements[el.id] = {
+				...el,
+				...updates[el.id],
+				pageId: toPageId,
+				zIndex: base + i,
+				parentElementId: null
+			} as TCanvasElement;
+		});
+
+		updateDocumentPages({
+			...currentDocument.pages,
+			[fromPageId]: { ...from, elements: withoutLoneGroups(fromElements) },
+			[toPageId]: { ...to, elements: toElements }
+		});
+		selectElements(
+			toPageId,
+			moving.map((el) => el.id)
+		);
+	};
+
+	/** Move the selected elements to another page, to the same position if it fits there. */
+	const moveSelectedToPage = (toPageId: string) => {
+		const selected = getSelectedElements();
+		const target = getPage(toPageId);
+		const box = boundingRect(selected);
+		if (!target || !box || toPageId === selection.pageId) return;
+
+		const { updates } = placeOnPage(selected, { x: box.x, y: box.y }, target.boundaries);
+		moveElementsToPage(selection.pageId, toPageId, updates);
+	};
+
 	const deletePage = (pageId: string) => {
 		const pages = { ...currentDocument.pages };
 		delete pages[pageId];
@@ -525,6 +581,8 @@ const createAppStore = () => {
 		setMultiSelectMode,
 		moveElements,
 		updateElements,
+		moveElementsToPage,
+		moveSelectedToPage,
 		groupSelected,
 		ungroupSelected,
 		updateBoundaries,

@@ -38,6 +38,7 @@ test.describe('Import / export', () => {
 
 	test('importing into an empty library restores the document without asking', async ({ page }) => {
 		await page.goto('/documents');
+		await page.waitForLoadState('networkidle'); // the page must be interactive before a file is chosen
 		await page.getByTestId('import-input').setInputFiles({
 			name: 'resume.lienzo.json',
 			mimeType: 'application/json',

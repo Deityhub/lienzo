@@ -14,6 +14,16 @@ export interface Rect extends Point, Size {}
 export const MIN_ELEMENT_SIZE = 20;
 export const SNAP_THRESHOLD = 10;
 
+/** Is the point inside the rectangle (edges included)? */
+export function pointInRect(
+	point: Point,
+	rect: { left: number; top: number; right: number; bottom: number }
+): boolean {
+	return (
+		point.x >= rect.left && point.x <= rect.right && point.y >= rect.top && point.y <= rect.bottom
+	);
+}
+
 /** Do two rectangles overlap or touch? */
 export function rectsOverlap(a: Rect, b: Rect): boolean {
 	return !(
