@@ -3,6 +3,7 @@
 	import { CANVAS_WIDTH, CANVAS_HEIGHT } from '$lib/const/dimension';
 	import type { TCanvasElement, RulerBoundaries } from '$lib/types/canvas';
 	import type { OnPropertyChange } from './types';
+	import PanelSection from './PanelSection.svelte';
 
 	const {
 		element,
@@ -20,9 +21,8 @@
 	const maxY = $derived(boundaries ? boundaries.vertical.end : CANVAS_HEIGHT);
 </script>
 
-<div class="space-y-2">
-	<h4 class="font-medium text-foreground">Position & Size</h4>
-	<div class="grid grid-cols-2 gap-2 max-lg:flex">
+<PanelSection title="Position and size">
+	<div class="grid grid-cols-2 gap-3 max-lg:contents">
 		<div class="max-lg:min-w-[10rem]">
 			<NumberInput
 				value={element.x}
@@ -60,4 +60,4 @@
 			/>
 		</div>
 	</div>
-</div>
+</PanelSection>

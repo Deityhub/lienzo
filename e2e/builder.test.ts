@@ -144,11 +144,8 @@ test.describe('Document Builder E2E Tests', () => {
 		await fontWeightSelect.click();
 
 		// Test font style change
-		const fontStyleSelect = page.getByTestId('select-font-style');
-		await fontStyleSelect.click();
-		const fontStyleNormal = page.getByTestId('select-font-style-option-normal');
-		await expect(fontStyleNormal).toBeVisible();
-		await fontStyleSelect.click();
+		await expect(page.getByTestId('select-font-style-option-normal')).toBeVisible();
+		await expect(page.getByTestId('select-font-style-option-italic')).toBeVisible();
 
 		// Test color change
 		const colorInput = page.getByTestId('input-color');
