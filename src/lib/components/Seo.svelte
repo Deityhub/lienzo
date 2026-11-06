@@ -45,7 +45,10 @@
 		<meta property="og:image" content={OG_IMAGE} />
 		<meta property="og:image:width" content="1200" />
 		<meta property="og:image:height" content="630" />
-		<meta property="og:image:alt" content="Lienzo – a modern document builder" />
+		<meta
+			property="og:image:alt"
+			content="Lienzo: design it, export it, edit it again. A free A4 document builder whose PDFs stay editable."
+		/>
 		<meta name="twitter:card" content="summary_large_image" />
 		<meta name="twitter:title" content={title} />
 		<meta name="twitter:description" content={description} />

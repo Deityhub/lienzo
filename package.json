@@ -27,6 +27,7 @@
 		"test:unit:run": "svelte-kit sync && vitest --run",
 		"test:unit:coverage": "svelte-kit sync && vitest --run --coverage",
 		"test": "yarn test:unit:run && yarn test:e2e",
+		"brand:assets": "node scripts/generate-brand-assets.mjs",
 		"test:e2e": "playwright test"
 	},
 	"devDependencies": {
