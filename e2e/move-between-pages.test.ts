@@ -202,6 +202,7 @@ test.describe('Moving elements between pages', () => {
 
 	test('there is nothing to choose with a single page', async ({ page }) => {
 		await page.goto('/canvas');
+		await page.waitForLoadState('networkidle'); // clicks only work once the page is interactive
 		await page.getByTestId('tool-shape').dragTo(page.getByTestId('document-canvas'), {
 			targetPosition: { x: 200, y: 200 }
 		});

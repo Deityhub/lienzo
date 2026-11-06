@@ -71,7 +71,9 @@ test.describe('PDF import', () => {
 	}) => {
 		const pdfPath = await exportPdf(page);
 
-		await page.goto('/canvas'); // a fresh, empty canvas
+		await page.goto('/canvas');
+
+		await page.waitForLoadState('networkidle'); // clicks only work once the page is interactive // a fresh, empty canvas
 		await page.getByTestId('canvas-import-input').setInputFiles(pdfPath);
 
 		await expect(page.locator('textarea')).toHaveValue('Editable headline');
@@ -79,6 +81,7 @@ test.describe('PDF import', () => {
 
 	test('a PDF that did not come from Lienzo is rejected with an explanation', async ({ page }) => {
 		await page.goto('/canvas');
+		await page.waitForLoadState('networkidle'); // clicks only work once the page is interactive
 		await page.getByTestId('canvas-import-input').setInputFiles({
 			name: 'plain.pdf',
 			mimeType: 'application/pdf',

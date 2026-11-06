@@ -2,10 +2,10 @@
 	import Button from '$lib/components/Button.svelte';
 	import { clipboard } from '$lib/canvas/clipboard.svelte';
 	import { Copy, CopyPlus, Scissors } from '@lucide/svelte';
+	import PanelSection from './PanelSection.svelte';
 </script>
 
-<div class="space-y-2">
-	<h4 class="font-medium text-foreground">Copy &amp; Paste</h4>
+<PanelSection title="Copy and paste">
 	<div class="flex flex-wrap gap-2">
 		<Button
 			data-testid="copy-btn"
@@ -38,4 +38,4 @@
 			Duplicate
 		</Button>
 	</div>
-</div>
+</PanelSection>

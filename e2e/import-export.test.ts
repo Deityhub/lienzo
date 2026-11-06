@@ -155,6 +155,7 @@ test.describe('Import / export', () => {
 
 		test('an empty canvas is replaced right away', async ({ page }) => {
 			await page.goto('/canvas');
+			await page.waitForLoadState('networkidle'); // clicks only work once the page is interactive
 			await page.getByTestId('canvas-import-input').setInputFiles(fileOf([twoPageDocument]));
 
 			await expect(page.getByTestId('page-count')).toContainText('2 Pages');
@@ -164,6 +165,7 @@ test.describe('Import / export', () => {
 
 		test('a canvas with content asks before replacing it', async ({ page }) => {
 			await page.goto('/canvas');
+			await page.waitForLoadState('networkidle'); // clicks only work once the page is interactive
 			await page.getByTestId('tool-text').dragTo(page.getByTestId('document-canvas'), {
 				targetPosition: { x: 200, y: 200 }
 			});
@@ -180,6 +182,7 @@ test.describe('Import / export', () => {
 
 		test('cancelling keeps the current canvas', async ({ page }) => {
 			await page.goto('/canvas');
+			await page.waitForLoadState('networkidle'); // clicks only work once the page is interactive
 			await page.getByTestId('add-page-btn').click();
 
 			await page.getByTestId('canvas-import-input').setInputFiles(fileOf([twoPageDocument]));
@@ -191,6 +194,7 @@ test.describe('Import / export', () => {
 
 		test('a file with several documents is rejected', async ({ page }) => {
 			await page.goto('/canvas');
+			await page.waitForLoadState('networkidle'); // clicks only work once the page is interactive
 			await page
 				.getByTestId('canvas-import-input')
 				.setInputFiles(fileOf([twoPageDocument, { ...twoPageDocument, id: 'other' }]));
@@ -203,6 +207,7 @@ test.describe('Import / export', () => {
 
 		test('an invalid file shows an error', async ({ page }) => {
 			await page.goto('/canvas');
+			await page.waitForLoadState('networkidle'); // clicks only work once the page is interactive
 			await page.getByTestId('canvas-import-input').setInputFiles({
 				name: 'bad.json',
 				mimeType: 'application/json',

@@ -2,6 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 
 async function addTextElement(page: Page) {
 	await page.goto('/canvas');
+	await page.waitForLoadState('networkidle'); // clicks only work once the page is interactive
 	await page.getByTestId('tool-text').dragTo(page.getByTestId('document-canvas'), {
 		targetPosition: { x: 200, y: 200 }
 	});

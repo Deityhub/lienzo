@@ -10,3 +10,4 @@ export { default as ColorInput } from './ColorInput.svelte';
 export { default as Seo } from './Seo.svelte';
 export { default as ThemeToggle } from './ThemeToggle.svelte';
 export { default as RangeInput } from './RangeInput.svelte';
+export { default as SegmentedControl } from './SegmentedControl.svelte';

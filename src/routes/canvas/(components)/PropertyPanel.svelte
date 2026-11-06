@@ -2,7 +2,7 @@
 	import { appStore } from '$lib/stores/appStore.svelte.ts';
 	import { slide } from 'svelte/transition';
 	import Button from '$lib/components/Button.svelte';
-	import { Group, Trash2, Ungroup } from '@lucide/svelte';
+	import { ChevronUp, Group, Trash2, Ungroup } from '@lucide/svelte';
 	import PositionSize from './property-panels/PositionSize.svelte';
 	import Layering from './property-panels/Layering.svelte';
 	import MoveToPage from './property-panels/MoveToPage.svelte';
@@ -19,6 +19,9 @@
 			selectedElements.every((el) => el.groupId && el.groupId === selectedElements[0].groupId)
 	);
 	const hasGroups = $derived(selectedElements.some((el) => el.groupId));
+	// On a phone the panel is a sheet at the bottom: just its title until it is opened
+	let expanded = $state(false);
+	const body = $derived(expanded ? '' : 'max-lg:hidden');
 	const pages = $derived(appStore.getPages());
 	const currentPage = $derived(selectedElement ? pages[selectedElement.pageId] : undefined);
 
@@ -33,22 +36,42 @@
 	}
 </script>
 
+{#snippet header(title: string)}
+	<div class="flex items-center justify-between gap-2 border-b border-border max-lg:py-2 lg:pb-4">
+		<h3
+			class="text-base leading-6 font-semibold text-foreground"
+			data-testid="property-panel-title"
+		>
+			{title}
+		</h3>
+		<button
+			type="button"
+			class="inline-flex h-11 w-11 cursor-pointer items-center justify-center rounded text-foreground hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none lg:hidden"
+			aria-expanded={expanded}
+			aria-label={expanded ? 'Hide properties' : 'Show properties'}
+			data-testid="property-panel-toggle"
+			onclick={() => (expanded = !expanded)}
+		>
+			<ChevronUp
+				class="h-5 w-5 transition-transform {expanded ? 'rotate-180' : ''}"
+				aria-hidden="true"
+			/>
+		</button>
+	</div>
+{/snippet}
+
 {#if selectedElement || selectedElements.length > 1}
 	<!-- One panel for one or several selected elements, so it does not slide out and in when the selection changes -->
 	<div
 		transition:slide={{ duration: 300, axis: 'x' }}
-		class="w-80 overflow-y-auto border-l border-border bg-background p-4 max-lg:absolute max-lg:bottom-0 max-lg:left-0 max-lg:z-9999 max-lg:h-[15vh] max-lg:w-full max-lg:overflow-y-hidden lg:pt-30"
+		class="w-80 overflow-y-auto border-l border-border bg-background px-5 pb-2 max-lg:absolute max-lg:bottom-0 max-lg:left-0 max-lg:z-9999 max-lg:max-h-[55vh] max-lg:w-full max-lg:rounded-t-xl max-lg:border-t max-lg:border-l-0 max-lg:px-4 max-lg:shadow-[0_-8px_24px_rgba(0,0,0,0.18)] lg:pt-30"
 		data-testid="property-panel"
 	>
 		{#if selectedElement}
-			<div class="mb-6 space-y-4 max-lg:flex max-lg:items-center max-lg:gap-2">
-				<h3
-					class="mb-4 text-lg font-semibold text-foreground max-lg:hidden"
-					data-testid="property-panel-title"
-				>
-					{selectedElement.type.charAt(0).toUpperCase() + selectedElement.type.slice(1)} Properties
-				</h3>
-
+			{@render header(
+				`${selectedElement.type.charAt(0).toUpperCase() + selectedElement.type.slice(1)} Properties`
+			)}
+			<div class={body}>
 				<PositionSize
 					element={selectedElement}
 					boundaries={currentPage?.boundaries}
@@ -67,13 +90,12 @@
 				{/if}
 
 				<!-- Delete Button -->
-				<div class="pt-4">
+				<div class="py-4">
 					<Button
 						data-testid="delete-element-btn"
 						onClick={() => appStore.deleteElement(selectedElement.id, selectedElement.pageId)}
-						variant="destructive"
+						variant="secondary-destructive"
 						fullWidth
-						className="max-lg:min-w-[12rem]"
 					>
 						<Trash2 class="mr-2 h-4 w-4" />
 						Delete Element
@@ -81,43 +103,43 @@
 				</div>
 			</div>
 		{:else}
-			<div class="space-y-4 max-lg:flex max-lg:items-center max-lg:gap-2">
-				<h3 class="text-lg font-semibold text-foreground" data-testid="property-panel-title">
-					{isOneGroup ? 'Group of' : ''}
-					{selectedElements.length}
-					{isOneGroup ? 'elements' : 'elements selected'}
-				</h3>
-				<p class="text-sm text-muted-foreground max-lg:hidden">
+			{@render header(
+				`${isOneGroup ? 'Group of' : ''} ${selectedElements.length} ${isOneGroup ? 'elements' : 'elements selected'}`.trim()
+			)}
+			<div class="flex flex-col gap-4 pt-4 {body}">
+				<p class="text-sm text-muted-foreground">
 					{isOneGroup
 						? 'They are selected and moved together until you ungroup them.'
 						: 'Drag any of them to move them together, or group them to keep them together.'}
 				</p>
-				{#if !isOneGroup}
-					<Button
-						data-testid="group-btn"
-						onClick={() => appStore.groupSelected()}
-						variant="primary"
-						fullWidth
-						className="max-lg:min-w-[10rem]"
-					>
-						<Group class="mr-2 h-4 w-4" />
-						Group
-					</Button>
-				{/if}
-				{#if hasGroups}
-					<Button
-						data-testid="ungroup-btn"
-						onClick={() => appStore.ungroupSelected()}
-						variant="secondary"
-						fullWidth
-						className="max-lg:min-w-[10rem]"
-					>
-						<Ungroup class="mr-2 h-4 w-4" />
-						Ungroup
-					</Button>
-				{/if}
-				<ClipboardActions />
-				<MoveToPage />
+				<div class="flex flex-wrap gap-2">
+					{#if !isOneGroup}
+						<Button
+							data-testid="group-btn"
+							onClick={() => appStore.groupSelected()}
+							variant="primary"
+							className="flex-1"
+						>
+							<Group class="mr-2 h-4 w-4" />
+							Group
+						</Button>
+					{/if}
+					{#if hasGroups}
+						<Button
+							data-testid="ungroup-btn"
+							onClick={() => appStore.ungroupSelected()}
+							variant="secondary"
+							className="flex-1"
+						>
+							<Ungroup class="mr-2 h-4 w-4" />
+							Ungroup
+						</Button>
+					{/if}
+				</div>
+				<div>
+					<ClipboardActions />
+					<MoveToPage />
+				</div>
 				<Button
 					data-testid="delete-selected-btn"
 					onClick={() =>
@@ -125,9 +147,8 @@
 							selectedElements.map((el) => el.id),
 							selectedElements[0].pageId
 						)}
-					variant="destructive"
+					variant="secondary-destructive"
 					fullWidth
-					className="max-lg:min-w-[12rem]"
 				>
 					<Trash2 class="mr-2 h-4 w-4" />
 					Delete {selectedElements.length} elements

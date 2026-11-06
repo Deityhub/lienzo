@@ -1,6 +1,7 @@
 <script lang="ts">
 	import Select from '$lib/components/Select.svelte';
 	import { appStore } from '$lib/stores/appStore.svelte.ts';
+	import PanelSection from './PanelSection.svelte';
 
 	const selected = $derived(appStore.getSelectedElements());
 	const pageIds = $derived(Object.keys(appStore.getPages()));
@@ -25,8 +26,7 @@
 </script>
 
 {#if pageIds.length > 1 && selected.length}
-	<div class="space-y-2">
-		<h4 class="font-medium text-foreground">Move to Page</h4>
+	<PanelSection title="Move to page">
 		<Select
 			value=""
 			{options}
@@ -34,5 +34,5 @@
 			testId="move-to-page"
 			onChange={moveTo}
 		/>
-	</div>
+	</PanelSection>
 {/if}

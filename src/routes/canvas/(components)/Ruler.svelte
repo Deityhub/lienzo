@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { anchorLabel, moveAnchor, positionOnRuler } from '$lib/utils/rulerAnchors';
+
 	interface RulerProps {
 		orientation: 'horizontal' | 'vertical';
 		size: number;
@@ -11,178 +13,106 @@
 	const { orientation, size, displaySize, startAnchor, endAnchor, onAnchorChange }: RulerProps =
 		$props();
 
-	let isDraggingStart = $state(false);
-	let isDraggingEnd = $state(false);
+	type Which = 'start' | 'end';
+
+	/** The marker being dragged, or the one with the keyboard focus (both show their value) */
+	let dragging = $state<Which | null>(null);
+	let focused = $state<Which | null>(null);
 	let rulerRef: HTMLDivElement;
 
 	const RULER_SIZE = 30; // pixels
-	const MAJOR_TICK_INTERVAL = 100; // Major tick every 100px
-	const MINOR_TICK_INTERVAL = 50; // Minor tick every 50px
-	const TINY_TICK_INTERVAL = 10; // Tiny tick every 10px
+	const MAJOR_TICK_INTERVAL = 100;
+	const MINOR_TICK_INTERVAL = 50;
+	const TINY_TICK_INTERVAL = 10;
+	const LABEL_INTERVAL = 500;
 
-	// Generate tick marks with different sizes
-	const majorTicks = $derived(
-		Array.from(
-			{ length: Math.floor(size / MAJOR_TICK_INTERVAL) + 1 },
-			(_, i) => i * MAJOR_TICK_INTERVAL
-		)
-	);
+	const ticks = (interval: number) =>
+		Array.from({ length: Math.floor(size / interval) + 1 }, (_, i) => i * interval);
+	const majorTicks = $derived(ticks(MAJOR_TICK_INTERVAL));
+	const minorTicks = $derived(ticks(MINOR_TICK_INTERVAL).filter((t) => t % MAJOR_TICK_INTERVAL));
+	const tinyTicks = $derived(ticks(TINY_TICK_INTERVAL).filter((t) => t % MINOR_TICK_INTERVAL));
+	const labels = $derived(ticks(LABEL_INTERVAL));
 
-	const minorTicks = $derived(
-		Array.from(
-			{ length: Math.floor(size / MINOR_TICK_INTERVAL) + 1 },
-			(_, i) => i * MINOR_TICK_INTERVAL
-		).filter((tick) => tick % MAJOR_TICK_INTERVAL !== 0)
-	);
+	const isHorizontal = $derived(orientation === 'horizontal');
+	const percentOf = (value: number) => (value / size) * 100;
+	const valueOf = (which: Which) => (which === 'start' ? startAnchor : endAnchor);
+	const anchors = $derived({ start: startAnchor, end: endAnchor });
 
-	const tinyTicks = $derived(
-		Array.from(
-			{ length: Math.floor(size / TINY_TICK_INTERVAL) + 1 },
-			(_, i) => i * TINY_TICK_INTERVAL
-		).filter((tick) => tick % MINOR_TICK_INTERVAL !== 0)
-	);
-
-	function handleStartAnchorPointerDown(event: PointerEvent) {
-		event.preventDefault();
+	function begin(which: Which, event: PointerEvent | TouchEvent) {
+		if (event.type === 'pointerdown') event.preventDefault();
 		event.stopPropagation();
-		isDraggingStart = true;
+		dragging = which;
 	}
 
-	function handleEndAnchorPointerDown(event: PointerEvent) {
-		event.preventDefault();
-		event.stopPropagation();
-		isDraggingEnd = true;
-	}
-
-	// Also add touch-specific handlers for better mobile support
-	function handleStartAnchorTouchStart(event: TouchEvent) {
-		event.stopPropagation();
-		isDraggingStart = true;
-	}
-
-	function handleEndAnchorTouchStart(event: TouchEvent) {
-		event.stopPropagation();
-		isDraggingEnd = true;
-	}
-
-	// Throttled pointer move for snappy performance
+	// Throttled so the markers feel snappy without flooding the page with updates
 	let lastUpdateTime = 0;
-	const UPDATE_THROTTLE = 8; // ~120fps for smoother experience
+	const UPDATE_THROTTLE = 8; // ~120fps
+
+	function moveTo(clientX: number, clientY: number) {
+		if (!dragging) return;
+		const now = performance.now();
+		if (now - lastUpdateTime < UPDATE_THROTTLE) return;
+		lastUpdateTime = now;
+
+		const rect = rulerRef.getBoundingClientRect();
+		const offset = isHorizontal ? clientX - rect.left : clientY - rect.top;
+		const next = moveAnchor(dragging, positionOnRuler(offset, size, displaySize), anchors, size);
+		onAnchorChange(next.start, next.end);
+	}
 
 	function handlePointerMove(event: PointerEvent) {
-		if (!isDraggingStart && !isDraggingEnd) return;
-
-		// Prevent default to stop scrolling during drag
-		event.preventDefault();
-
-		// Throttle for smooth performance on mobile
-		const now = performance.now();
-		if (now - lastUpdateTime < UPDATE_THROTTLE) return;
-		lastUpdateTime = now;
-
-		const rect = rulerRef.getBoundingClientRect();
-		let position: number;
-
-		if (orientation === 'horizontal') {
-			const relativePos = event.clientX - rect.left;
-			const scale = size / displaySize;
-			position = relativePos * scale;
-		} else {
-			const relativePos = event.clientY - rect.top;
-			const scale = size / displaySize;
-			position = relativePos * scale;
-		}
-
-		// Clamp position to ruler bounds
-		position = Math.max(0, Math.min(size, position));
-
-		if (isDraggingStart) {
-			// Ensure start anchor doesn't go past end anchor
-			const newStart = Math.min(position, endAnchor - 50);
-			onAnchorChange(newStart, endAnchor);
-		} else if (isDraggingEnd) {
-			// Ensure end anchor doesn't go before start anchor
-			const newEnd = Math.max(position, startAnchor + 50);
-			onAnchorChange(startAnchor, newEnd);
-		}
+		if (!dragging) return;
+		event.preventDefault(); // no scrolling while dragging
+		moveTo(event.clientX, event.clientY);
 	}
 
-	// Separate handler for touch events with proper typing
 	function handleTouchMove(event: TouchEvent) {
-		if (!isDraggingStart && !isDraggingEnd) return;
-
-		// Prevent default to stop scrolling during drag
+		if (!dragging) return;
 		event.preventDefault();
-
-		// Throttle for smooth performance on mobile
-		const now = performance.now();
-		if (now - lastUpdateTime < UPDATE_THROTTLE) return;
-		lastUpdateTime = now;
-
-		const rect = rulerRef.getBoundingClientRect();
-		let position: number;
-
-		// Get touch coordinates with proper typing
-		if (event.touches.length > 0) {
-			const touch = event.touches[0];
-
-			if (orientation === 'horizontal') {
-				const relativePos = touch.clientX - rect.left;
-				const scale = size / displaySize;
-				position = relativePos * scale;
-			} else {
-				const relativePos = touch.clientY - rect.top;
-				const scale = size / displaySize;
-				position = relativePos * scale;
-			}
-
-			// Clamp position to ruler bounds
-			position = Math.max(0, Math.min(size, position));
-
-			if (isDraggingStart) {
-				// Ensure start anchor doesn't go past end anchor
-				const newStart = Math.min(position, endAnchor - 50);
-				onAnchorChange(newStart, endAnchor);
-			} else if (isDraggingEnd) {
-				// Ensure end anchor doesn't go before start anchor
-				const newEnd = Math.max(position, startAnchor + 50);
-				onAnchorChange(startAnchor, newEnd);
-			}
-		}
+		if (event.touches.length) moveTo(event.touches[0].clientX, event.touches[0].clientY);
 	}
 
-	function handlePointerUp() {
-		isDraggingStart = false;
-		isDraggingEnd = false;
-		lastUpdateTime = 0; // Reset throttle
+	function end() {
+		dragging = null;
+		lastUpdateTime = 0;
+	}
+
+	/** Arrow keys move the focused marker by 10 pixels, 50 with Shift */
+	function handleKeydown(which: Which, event: KeyboardEvent) {
+		const direction = { ArrowLeft: -1, ArrowUp: -1, ArrowRight: 1, ArrowDown: 1 }[event.key];
+		if (!direction) return;
+		event.preventDefault();
+		const step = event.shiftKey ? 50 : 10;
+		const next = moveAnchor(which, valueOf(which) + direction * step, anchors, size);
+		onAnchorChange(next.start, next.end);
 	}
 
 	$effect(() => {
-		if (isDraggingStart || isDraggingEnd) {
-			const options: AddEventListenerOptions = { passive: false };
-			// Add both pointer and touch event listeners for maximum compatibility
-			document.addEventListener('pointermove', handlePointerMove, options);
-			document.addEventListener('pointerup', handlePointerUp, true);
-			document.addEventListener('touchmove', handleTouchMove, options);
-			document.addEventListener('touchend', handlePointerUp, true);
-
-			return () => {
-				document.removeEventListener('pointermove', handlePointerMove, options);
-				document.removeEventListener('pointerup', handlePointerUp, true);
-				document.removeEventListener('touchmove', handleTouchMove, options);
-				document.removeEventListener('touchend', handlePointerUp, true);
-			};
-		}
+		if (!dragging) return;
+		const options: AddEventListenerOptions = { passive: false };
+		document.addEventListener('pointermove', handlePointerMove, options);
+		document.addEventListener('pointerup', end, true);
+		document.addEventListener('touchmove', handleTouchMove, options);
+		document.addEventListener('touchend', end, true);
+		return () => {
+			document.removeEventListener('pointermove', handlePointerMove, options);
+			document.removeEventListener('pointerup', end, true);
+			document.removeEventListener('touchmove', handleTouchMove, options);
+			document.removeEventListener('touchend', end, true);
+		};
 	});
 
-	// Calculate percentage positions for anchors
-	const startPercent = $derived((startAnchor / size) * 100);
-	const endPercent = $derived((endAnchor / size) * 100);
+	const startPercent = $derived(percentOf(startAnchor));
+	const endPercent = $derived(percentOf(endAnchor));
+	const markers: Array<{ which: Which; tone: string }> = [
+		{ which: 'start', tone: 'text-primary-text' },
+		{ which: 'end', tone: 'text-destructive-text' }
+	];
 </script>
 
 <div
 	bind:this={rulerRef}
-	class="relative border-primary bg-transparent select-none"
+	class="relative border-border bg-background select-none"
 	class:h-full={orientation === 'vertical'}
 	class:w-full={orientation === 'horizontal'}
 	class:border-r={orientation === 'vertical'}
@@ -192,135 +122,85 @@
 	style:touch-action="none"
 	data-testid="ruler"
 >
-	<!-- Major tick marks (tallest) -->
-	{#each majorTicks as tick (tick)}
-		{#if orientation === 'horizontal'}
+	<!-- Tick marks: tall every 100, medium every 50, short every 10 -->
+	{#each [{ list: majorTicks, length: 12 }, { list: minorTicks, length: 8 }, { list: tinyTicks, length: 4 }] as group (group.length)}
+		{#each group.list as tick (tick)}
 			<div
-				class="absolute bottom-0 w-[1px] bg-primary"
-				style:left="{(tick / size) * 100}%"
-				style:height="12px"
+				class="absolute bg-muted-foreground {isHorizontal ? 'bottom-0 w-px' : 'right-0 h-px'}"
+				style:left={isHorizontal ? `${percentOf(tick)}%` : undefined}
+				style:top={isHorizontal ? undefined : `${percentOf(tick)}%`}
+				style:height={isHorizontal ? `${group.length}px` : undefined}
+				style:width={isHorizontal ? undefined : `${group.length}px`}
 			></div>
-		{:else}
-			<div
-				class="absolute right-0 h-[1px] bg-primary"
-				style:top="{(tick / size) * 100}%"
-				style:width="12px"
-			></div>
-		{/if}
+		{/each}
 	{/each}
 
-	<!-- Minor tick marks (medium) -->
-	{#each minorTicks as tick (tick)}
-		{#if orientation === 'horizontal'}
-			<div
-				class="absolute bottom-0 w-[1px] bg-primary"
-				style:left="{(tick / size) * 100}%"
-				style:height="8px"
-			></div>
-		{:else}
-			<div
-				class="absolute right-0 h-[1px] bg-primary"
-				style:top="{(tick / size) * 100}%"
-				style:width="8px"
-			></div>
-		{/if}
+	<!-- Numbers, every 500 pixels -->
+	{#each labels as tick (tick)}
+		<span
+			class="pointer-events-none absolute text-[10px] leading-none text-muted-foreground {isHorizontal
+				? 'top-1'
+				: 'left-1 [writing-mode:vertical-rl]'}"
+			style:left={isHorizontal ? `calc(${percentOf(tick)}% + 4px)` : undefined}
+			style:top={isHorizontal ? undefined : `calc(${percentOf(tick)}% + 4px)`}
+			aria-hidden="true">{tick}</span
+		>
 	{/each}
 
-	<!-- Tiny tick marks (shortest) -->
-	{#each tinyTicks as tick (tick)}
-		{#if orientation === 'horizontal'}
+	<!-- The area between the margins -->
+	<div
+		class="pointer-events-none absolute bg-primary/10 {isHorizontal
+			? 'top-0 h-full'
+			: 'left-0 w-full'}"
+		style:left={isHorizontal ? `${startPercent}%` : undefined}
+		style:width={isHorizontal ? `${endPercent - startPercent}%` : undefined}
+		style:top={isHorizontal ? undefined : `${startPercent}%`}
+		style:height={isHorizontal ? undefined : `${endPercent - startPercent}%`}
+	></div>
+
+	<!-- The margin markers -->
+	{#each markers as marker (marker.which)}
+		{@const value = valueOf(marker.which)}
+		{@const percent = percentOf(value)}
+		<div
+			role="slider"
+			tabindex="0"
+			aria-label={anchorLabel(orientation, marker.which)}
+			aria-orientation={orientation}
+			aria-valuemin={0}
+			aria-valuemax={size}
+			aria-valuenow={Math.round(value)}
+			data-testid={`ruler-marker-${marker.which}`}
+			class="absolute z-10 cursor-grab focus-visible:outline-2 focus-visible:outline-ring active:cursor-grabbing {marker.tone}"
+			style:left={isHorizontal ? `calc(${percent}% - 6px)` : '0'}
+			style:top={isHorizontal ? '0' : `calc(${percent}% - 6px)`}
+			onpointerdown={(event) => begin(marker.which, event)}
+			ontouchstart={(event) => begin(marker.which, event)}
+			onkeydown={(event) => handleKeydown(marker.which, event)}
+			onfocus={() => (focused = marker.which)}
+			onblur={() => (focused = null)}
+		>
+			<svg width="12" height="12" viewBox="0 0 12 12" class="hover:opacity-80" aria-hidden="true">
+				<path
+					d={isHorizontal ? 'M 0 0 L 12 0 L 6 12 Z' : 'M 0 0 L 0 12 L 12 6 Z'}
+					fill="currentColor"
+				/>
+			</svg>
+		</div>
+
+		<!-- Its value, while it is dragged or has the keyboard focus -->
+		{#if dragging === marker.which || focused === marker.which}
 			<div
-				class="absolute bottom-0 w-[1px] bg-primary"
-				style:left="{(tick / size) * 100}%"
-				style:height="4px"
-			></div>
-		{:else}
-			<div
-				class="absolute right-0 h-[1px] bg-primary"
-				style:top="{(tick / size) * 100}%"
-				style:width="4px"
-			></div>
+				class="pointer-events-none absolute z-30 rounded bg-foreground px-2 py-1 text-xs font-semibold whitespace-nowrap text-background shadow-md"
+				style:left={isHorizontal ? `${percent}%` : `${RULER_SIZE + 6}px`}
+				style:top={isHorizontal ? `${RULER_SIZE + 6}px` : `${percent}%`}
+				style:transform={isHorizontal ? 'translateX(-50%)' : 'translateY(-50%)'}
+				role="status"
+				data-testid="ruler-tooltip"
+			>
+				{anchorLabel(orientation, marker.which)}
+				{Math.round(value)}
+			</div>
 		{/if}
 	{/each}
-
-	<!-- Boundary region highlight -->
-	{#if orientation === 'horizontal'}
-		<div
-			class="absolute top-0 h-full opacity-30"
-			style:left="{startPercent}%"
-			style:width="{endPercent - startPercent}%"
-		></div>
-	{:else}
-		<div
-			class="absolute left-0 w-full opacity-30"
-			style:top="{startPercent}%"
-			style:height="{endPercent - startPercent}%"
-		></div>
-	{/if}
-
-	<!-- Start anchor (triangle marker) -->
-	{#if orientation === 'horizontal'}
-		<div
-			role="button"
-			tabindex="0"
-			onkeydown={null}
-			class="absolute z-10 cursor-grab text-primary-text active:cursor-grabbing"
-			style:left="calc({startPercent}% - 6px)"
-			style:top="0"
-			onpointerdown={handleStartAnchorPointerDown}
-			ontouchstart={handleStartAnchorTouchStart}
-		>
-			<svg width="12" height="12" viewBox="0 0 12 12" class="hover:opacity-80">
-				<path d="M 0 0 L 12 0 L 6 12 Z" fill="currentColor" />
-			</svg>
-		</div>
-	{:else}
-		<div
-			role="button"
-			tabindex="0"
-			onkeydown={null}
-			class="absolute z-10 cursor-grab text-primary-text active:cursor-grabbing"
-			style:left="0"
-			style:top="calc({startPercent}% - 6px)"
-			onpointerdown={handleStartAnchorPointerDown}
-			ontouchstart={handleStartAnchorTouchStart}
-		>
-			<svg width="12" height="12" viewBox="0 0 12 12" class="hover:opacity-80">
-				<path d="M 0 0 L 0 12 L 12 6 Z" fill="currentColor" />
-			</svg>
-		</div>
-	{/if}
-
-	<!-- End anchor (triangle marker) -->
-	{#if orientation === 'horizontal'}
-		<div
-			role="button"
-			tabindex="0"
-			onkeydown={null}
-			class="absolute z-10 cursor-grab text-destructive-text active:cursor-grabbing"
-			style:left="calc({endPercent}% - 6px)"
-			style:top="0"
-			onpointerdown={handleEndAnchorPointerDown}
-			ontouchstart={handleEndAnchorTouchStart}
-		>
-			<svg width="12" height="12" viewBox="0 0 12 12" class="hover:opacity-80">
-				<path d="M 0 0 L 12 0 L 6 12 Z" fill="currentColor" />
-			</svg>
-		</div>
-	{:else}
-		<div
-			role="button"
-			tabindex="0"
-			onkeydown={null}
-			class="absolute z-10 cursor-grab text-destructive-text active:cursor-grabbing"
-			style:left="0"
-			style:top="calc({endPercent}% - 6px)"
-			onpointerdown={handleEndAnchorPointerDown}
-			ontouchstart={handleEndAnchorTouchStart}
-		>
-			<svg width="12" height="12" viewBox="0 0 12 12" class="hover:opacity-80">
-				<path d="M 0 0 L 0 12 L 12 6 Z" fill="currentColor" />
-			</svg>
-		</div>
-	{/if}
 </div>

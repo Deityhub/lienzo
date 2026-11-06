@@ -15,6 +15,7 @@ test.describe('Document Builder E2E Tests', () => {
 
 	test('create page has toolbar and canvas', async ({ page }) => {
 		await page.goto('/canvas');
+		await page.waitForLoadState('networkidle'); // clicks only work once the page is interactive
 
 		// Check for toolbar
 		await expect(page.getByTestId('toolbar')).toBeVisible();
@@ -25,6 +26,7 @@ test.describe('Document Builder E2E Tests', () => {
 
 	test('add page button works', async ({ page }) => {
 		await page.goto('/canvas');
+		await page.waitForLoadState('networkidle'); // clicks only work once the page is interactive
 
 		// Initially should have 1 page
 		const pageCount = page.getByTestId('page-count');
@@ -39,6 +41,7 @@ test.describe('Document Builder E2E Tests', () => {
 
 	test('drag and drop text element', async ({ page }) => {
 		await page.goto('/canvas');
+		await page.waitForLoadState('networkidle'); // clicks only work once the page is interactive
 
 		// Get the text tool
 		const textTool = page.getByTestId('tool-text');
@@ -57,6 +60,7 @@ test.describe('Document Builder E2E Tests', () => {
 
 	test('element selection and deselection', async ({ page }) => {
 		await page.goto('/canvas');
+		await page.waitForLoadState('networkidle'); // clicks only work once the page is interactive
 
 		// Add an element
 		const textTool = page.getByTestId('tool-text');
@@ -77,6 +81,7 @@ test.describe('Document Builder E2E Tests', () => {
 
 	test('resize handles appear on selected element', async ({ page }) => {
 		await page.goto('/canvas');
+		await page.waitForLoadState('networkidle'); // clicks only work once the page is interactive
 
 		// Add an element
 		const textTool = page.getByTestId('tool-text');
@@ -94,6 +99,7 @@ test.describe('Document Builder E2E Tests', () => {
 
 	test('delete element', async ({ page }) => {
 		await page.goto('/canvas');
+		await page.waitForLoadState('networkidle'); // clicks only work once the page is interactive
 
 		// Add an element
 		const textTool = page.getByTestId('tool-text');
@@ -111,6 +117,7 @@ test.describe('Document Builder E2E Tests', () => {
 
 	test('update text element properties', async ({ page }) => {
 		await page.goto('/canvas');
+		await page.waitForLoadState('networkidle'); // clicks only work once the page is interactive
 
 		// Add text element
 		const textTool = page.getByTestId('tool-text');
@@ -144,11 +151,8 @@ test.describe('Document Builder E2E Tests', () => {
 		await fontWeightSelect.click();
 
 		// Test font style change
-		const fontStyleSelect = page.getByTestId('select-font-style');
-		await fontStyleSelect.click();
-		const fontStyleNormal = page.getByTestId('select-font-style-option-normal');
-		await expect(fontStyleNormal).toBeVisible();
-		await fontStyleSelect.click();
+		await expect(page.getByTestId('select-font-style-option-normal')).toBeVisible();
+		await expect(page.getByTestId('select-font-style-option-italic')).toBeVisible();
 
 		// Test color change
 		const colorInput = page.getByTestId('input-color');
@@ -158,6 +162,7 @@ test.describe('Document Builder E2E Tests', () => {
 
 	test('update position and size properties', async ({ page }) => {
 		await page.goto('/canvas');
+		await page.waitForLoadState('networkidle'); // clicks only work once the page is interactive
 
 		// Add text element
 		const textTool = page.getByTestId('tool-text');
@@ -189,6 +194,7 @@ test.describe('Document Builder E2E Tests', () => {
 
 	test('update shape element properties', async ({ page }) => {
 		await page.goto('/canvas');
+		await page.waitForLoadState('networkidle'); // clicks only work once the page is interactive
 
 		// Add shape element
 		const shapeTool = page.getByTestId('tool-shape');
@@ -219,6 +225,7 @@ test.describe('Document Builder E2E Tests', () => {
 
 	test('update image element properties', async ({ page }) => {
 		await page.goto('/canvas');
+		await page.waitForLoadState('networkidle'); // clicks only work once the page is interactive
 
 		// Add image element
 		const imageTool = page.getByTestId('tool-image');
@@ -238,6 +245,7 @@ test.describe('Document Builder E2E Tests', () => {
 
 	test('rulers are visible', async ({ page }) => {
 		await page.goto('/canvas');
+		await page.waitForLoadState('networkidle'); // clicks only work once the page is interactive
 
 		// Check for ruler elements
 		const rulers = page.getByTestId(/ruler/);
@@ -246,6 +254,7 @@ test.describe('Document Builder E2E Tests', () => {
 
 	test('boundary visualization is visible', async ({ page }) => {
 		await page.goto('/canvas');
+		await page.waitForLoadState('networkidle'); // clicks only work once the page is interactive
 
 		// Check for boundary box (blue dashed border)
 		const boundary = page.getByTestId(/boundary/);
@@ -260,6 +269,7 @@ test.describe('Document Builder E2E Tests', () => {
 
 	test('multiple element types can be added', async ({ page }) => {
 		await page.goto('/canvas');
+		await page.waitForLoadState('networkidle'); // clicks only work once the page is interactive
 
 		const canvas = page.getByTestId('document-canvas');
 
