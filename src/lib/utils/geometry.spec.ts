@@ -6,6 +6,7 @@ import {
 	dragPosition,
 	dragPreviewRect,
 	findElementAt,
+	newElementPlacement,
 	getOverlappingElements,
 	rectsOverlap,
 	resizeRect,
@@ -261,5 +262,61 @@ describe('dragPreviewRect', () => {
 		const r = dragPreviewRect({ x: -50, y: -50 }, bounds);
 		expect(r.x).toBe(100);
 		expect(r.y).toBe(100);
+	});
+});
+
+describe('newElementPlacement', () => {
+	it('fills from the drop point to the right boundary, 500px tall at most', () => {
+		expect(newElementPlacement({ x: 300, y: 300 }, bounds, [])).toEqual({
+			x: 300,
+			y: 300,
+			width: 400,
+			height: 500,
+			parentElementId: null
+		});
+	});
+
+	it('snaps to the left boundary and then spans the full width', () => {
+		expect(newElementPlacement({ x: 105, y: 300 }, bounds, [])).toMatchObject({
+			x: 100,
+			width: 600
+		});
+	});
+
+	it('snaps to the top boundary', () => {
+		expect(newElementPlacement({ x: 300, y: 95 }, bounds, [])).toMatchObject({ y: 100 });
+	});
+
+	it('snaps the element to the right and bottom boundaries when dropped near them', () => {
+		const right = newElementPlacement({ x: 695, y: 300 }, bounds, []);
+		expect(right.x + right.width).toBe(700);
+
+		const bottom = newElementPlacement({ x: 300, y: 995 }, bounds, []);
+		expect(bottom.y + bottom.height).toBe(1000);
+	});
+
+	it('keeps a minimum size and stays inside the boundaries', () => {
+		const corner = newElementPlacement({ x: 650, y: 980 }, bounds, []);
+		expect(corner).toMatchObject({ width: 100, height: 50 });
+		expect(corner.x + corner.width).toBeLessThanOrEqual(700);
+		expect(corner.y + corner.height).toBeLessThanOrEqual(1000);
+
+		const outside = newElementPlacement({ x: -500, y: -500 }, bounds, []);
+		expect(outside).toMatchObject({ x: 100, y: 100 });
+	});
+
+	it('parents the new element to the topmost element under it', () => {
+		const below = el('below', 0, 0, 800, 800, 0);
+		const above = el('above', 200, 200, 300, 300, 3);
+
+		expect(newElementPlacement({ x: 300, y: 300 }, bounds, [below, above]).parentElementId).toBe(
+			'above'
+		);
+		expect(newElementPlacement({ x: 150, y: 150 }, bounds, [below, above]).parentElementId).toBe(
+			'below'
+		);
+		expect(newElementPlacement({ x: 900, y: 900 }, bounds, [below, above]).parentElementId).toBe(
+			null
+		);
 	});
 });
