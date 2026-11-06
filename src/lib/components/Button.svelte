@@ -41,17 +41,17 @@
 		...restProps
 	}: ButtonProps = $props();
 
-	const baseClasses = `inline-flex items-center justify-center font-medium rounded-lg transition-colors ${variant !== 'text' && variant !== 'ghost' ? `focus:outline-none` : ''}`;
+	const baseClasses = `inline-flex items-center justify-center font-medium rounded transition-colors ${variant !== 'text' && variant !== 'ghost' ? `focus:outline-none` : ''}`;
 
 	const variantClasses: Record<ButtonVariant, string> = {
-		primary: 'bg-primary text-primary-foreground hover:bg-primary-dark shadow-md hover:shadow-lg',
-		secondary: 'border-2 border-primary text-primary hover:bg-primary/10',
-		'secondary-destructive': 'border-2 border-destructive text-destructive hover:bg-destructive/10',
-		destructive:
-			'bg-destructive text-destructive-foreground hover:bg-destructive-dark shadow-md hover:shadow-lg',
+		primary: 'bg-primary text-primary-foreground hover:bg-primary-dark',
+		secondary: 'border-2 border-primary text-primary-text hover:bg-primary/10',
+		'secondary-destructive':
+			'border-2 border-destructive text-destructive-text hover:bg-destructive/10',
+		destructive: 'bg-destructive text-destructive-foreground hover:bg-destructive-dark',
 		ghost:
 			'text-foreground hover:bg-accent hover:text-accent-foreground border border-transparent hover:border-border',
-		text: 'text-primary hover:bg-accent/50'
+		text: 'text-primary-text hover:bg-accent/50'
 	};
 
 	const getSizeStyles = (size: ButtonSize) => {
@@ -104,8 +104,8 @@
 			: variant === 'ghost'
 				? 'text-foreground'
 				: variant === 'secondary-destructive'
-					? 'text-destructive'
-					: 'text-primary';
+					? 'text-destructive-text'
+					: 'text-primary-text';
 
 	const isDisabled = $derived(disabled || pending);
 

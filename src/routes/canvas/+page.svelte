@@ -218,7 +218,7 @@
 			initialName={appStore.getCurrentDocument().name}
 		>
 			{#if saveError}
-				<div class="mt-2 text-sm text-destructive">{saveError}</div>
+				<div class="mt-2 text-sm text-destructive-text">{saveError}</div>
 			{/if}
 		</NameModal>
 	{/if}

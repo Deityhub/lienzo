@@ -141,8 +141,8 @@
 	class="absolute left-[50%] z-9999 m-auto flex h-auto w-[90vw] translate-x-[-50%] translate-y-[-50%] flex-col border-r border-border bg-background transition-all duration-300 ease-in-out max-sm:top-40 sm:top-28 md:relative md:top-20 md:left-[unset] md:h-full md:translate-none {isExpanded
 		? 'md:w-64'
 		: 'md:w-20'}"
-	class:bg-blue-50={isDragging}
-	class:border-blue-300={isDragging}
+	class:bg-primary-light={isDragging}
+	class:border-primary={isDragging}
 >
 	<div class="absolute top-1/2 -right-4 hidden rounded-xl bg-background md:block">
 		<Button onClick={() => (isExpanded = !isExpanded)} variant="text">

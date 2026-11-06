@@ -49,7 +49,7 @@
 			data-autofocus
 		/>
 		{#if error}
-			<div class="mt-2 text-sm text-destructive">{error}</div>
+			<div class="mt-2 text-sm text-destructive-text">{error}</div>
 		{/if}
 		{@render children?.()}
 	</Modal>

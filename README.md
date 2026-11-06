@@ -234,6 +234,7 @@ This project follows:
 4. **Adjust Boundaries**: Drag ruler markers to set canvas boundaries
 5. **Multi-page Support**: Add additional pages as needed
 6. **Save & Export**: Your work is saved automatically in your browser a moment after each change (a new document is called "Untitled document" until you name it with **Save**). Export it as a PDF when you are done
+7. **Light or dark**: The switch in the header changes the theme. It starts from your system setting and remembers your choice. The page you design is always white, so a document looks the same in both.
 
 ### Element Manipulation
 

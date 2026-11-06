@@ -27,5 +27,5 @@
 	cancelLabel="Close"
 	closeFromBackdrop={true}
 >
-	<p class="text-sm text-destructive" data-testid="canvas-import-error">{importer.error}</p>
+	<p class="text-sm text-destructive-text" data-testid="canvas-import-error">{importer.error}</p>
 </Modal>

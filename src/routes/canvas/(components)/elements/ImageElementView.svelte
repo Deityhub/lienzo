@@ -34,6 +34,6 @@
 	{#if element.src}
 		<img src={element.src} alt={element.alt} style="display: none;" />
 	{:else}
-		<div class="text-sm text-muted-foreground">No image</div>
+		<div class="text-sm text-paper-foreground/60">No image</div>
 	{/if}
 </div>

@@ -66,7 +66,7 @@
 		</div>
 		<div class="mt-4 flex items-center justify-between">
 			<span
-				class="inline-flex items-center rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary"
+				class="inline-flex items-center rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary-text"
 			>
 				<svg
 					class="mr-1 h-3 w-3"

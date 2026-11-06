@@ -10,7 +10,23 @@
 		<link rel="icon" href="/favicon/favicon.svg" type="image/svg+xml" />
 		<link rel="apple-touch-icon" href="/favicon/apple-touch-icon.png" />
 		<link rel="manifest" href="/favicon/site.webmanifest" />
-		<meta name="theme-color" content="#4F46E5" />
+		<meta name="theme-color" content="#0f6cbd" />
+		<script>
+			// Apply the saved or system theme before the first paint, so the page never flashes the wrong one
+			(function () {
+				try {
+					var theme = localStorage.getItem('lienzo-theme');
+					if (theme !== 'light' && theme !== 'dark') {
+						theme = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+					}
+					var root = document.documentElement;
+					if (theme === 'dark') root.classList.add('dark');
+					root.style.colorScheme = theme;
+				} catch (e) {
+					/* storage can be blocked: keep the default theme */
+				}
+			})();
+		</script>
 		%sveltekit.head%
 	</head>
 	<body data-sveltekit-preload-data="hover">

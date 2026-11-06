@@ -240,7 +240,9 @@
 				bind:this={canvasRef}
 				id={`canvas-${dataPageId}`}
 				data-testid="document-canvas"
-				class="relative bg-background shadow-lg {dropHere ? 'ring-4 ring-primary' : ''}"
+				class="relative bg-paper text-paper-foreground shadow-lg {dropHere
+					? 'ring-4 ring-primary'
+					: ''}"
 				style:width="{width * scale}px"
 				style:height="{height * scale}px"
 				style:touch-action={multiSelectMode ? 'none' : undefined}
