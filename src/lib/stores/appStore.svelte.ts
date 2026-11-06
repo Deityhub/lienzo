@@ -36,6 +36,9 @@ const createAppStore = () => {
 		updatedAt: Date.now()
 	});
 
+	// Counts changes to the pages, so autosave can tell when there is something new to save
+	let revision = $state(0);
+
 	let scale = $state(DISPLAY_SCALE);
 
 	let selectedElement: TCanvasElement | null = $state(null);
@@ -145,6 +148,9 @@ const createAppStore = () => {
 
 	const getSelectedElement = () => selectedElement;
 
+	/** Changes whenever the pages change; loading or starting a document does not count. */
+	const getRevision = () => revision;
+
 	// Mutations
 	const setCurrentDocument = (document: DocumentData) => {
 		currentDocument = { ...document };
@@ -152,6 +158,7 @@ const createAppStore = () => {
 
 	const updateDocumentPages = (pages: Record<string, DocumentPage>) => {
 		currentDocument = { ...currentDocument, pages };
+		revision++;
 	};
 
 	const updateCurrentDocument = (document: Partial<DocumentData>) => {
@@ -295,7 +302,9 @@ const createAppStore = () => {
 	};
 
 	const deletePage = (pageId: string) => {
-		delete currentDocument.pages[pageId];
+		const pages = { ...currentDocument.pages };
+		delete pages[pageId];
+		updateDocumentPages(pages);
 	};
 
 	// Move element from one parent to another
@@ -359,6 +368,7 @@ const createAppStore = () => {
 		getCurrentDocument,
 		getPageElements,
 		getScale,
+		getRevision,
 
 		// Mutations
 		setCurrentDocument,

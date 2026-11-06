@@ -15,6 +15,7 @@
 	import { displayScaleForWidth, trackDisplayScale, viewportWidth } from '$lib/utils/viewport';
 	import { saveCurrentDocument } from '$lib/canvas/saveDocument';
 	import { createCanvasImport } from '$lib/canvas/canvasImport.svelte';
+	import { createAutosave } from '$lib/canvas/autosave.svelte';
 	import { onMount } from 'svelte';
 	import { browser } from '$app/environment';
 	import { goto } from '$app/navigation';
@@ -23,8 +24,16 @@
 	const pages = $derived(Object.values(appStore.getPages()));
 	const canvasInstances = $state<Record<string, TCanvasInstance>>({});
 
-	function handleBackNavigation() {
-		// A document without a name was never saved: go home. Otherwise back to the documents list.
+	async function handleBackNavigation() {
+		// Edits are saved automatically; finish saving before leaving
+		await autosave.flush();
+		if (
+			autosave.status === 'error' &&
+			!confirm('Your latest changes could not be saved. Leave anyway?')
+		) {
+			return;
+		}
+		// A document without a name was never edited: go home. Otherwise back to the documents list.
 		goto(resolve(appStore.getCurrentDocument().name ? '/documents' : '/'));
 	}
 
@@ -77,9 +86,24 @@
 		if (!name) return;
 		savePending = true;
 		saveError = (await saveCurrentDocument(name)) ?? '';
-		if (!saveError) saveModalOpen = false;
+		if (!saveError) {
+			autosave.markSaved();
+			saveModalOpen = false;
+		}
 		savePending = false;
 	}
+
+	// Autosave: edits are saved shortly after they are made, once the browser can store them
+	const autosave = createAutosave({
+		getRevision: appStore.getRevision,
+		getName: () => appStore.getCurrentDocument().name,
+		save: saveCurrentDocument
+	});
+	$effect(() => {
+		const revision = appStore.getRevision();
+		const id = appStore.getCurrentDocument().id;
+		if (isIndexedDbSupported) autosave.changed(id, revision);
+	});
 
 	// Importing a document file into the canvas
 	const importer = createCanvasImport(
@@ -91,7 +115,26 @@
 
 	onMount(() => {
 		isIndexedDbSupported = isIndexedDBSupported();
-		return trackDisplayScale((scale) => appStore.setScale(scale));
+		const stopTracking = trackDisplayScale((scale) => appStore.setScale(scale));
+
+		// Save pending edits when the tab is hidden or closed, and warn if they could not be saved
+		const flush = () => {
+			if (document.visibilityState === 'hidden') void autosave.flush();
+		};
+		const warn = (event: BeforeUnloadEvent) => {
+			if (autosave.hasUnsaved) event.preventDefault();
+		};
+		document.addEventListener('visibilitychange', flush);
+		window.addEventListener('pagehide', flush);
+		window.addEventListener('beforeunload', warn);
+
+		return () => {
+			stopTracking();
+			document.removeEventListener('visibilitychange', flush);
+			window.removeEventListener('pagehide', flush);
+			window.removeEventListener('beforeunload', warn);
+			void autosave.flush(); // leaving the editor
+		};
 	});
 </script>
 
@@ -104,6 +147,9 @@
 		pageCount={pages.length}
 		busy={savePending}
 		canSave={isIndexedDbSupported}
+		saveStatus={autosave.status}
+		saveError={autosave.error}
+		onRetrySave={() => autosave.retry()}
 		onBack={handleBackNavigation}
 		onSave={() => (saveModalOpen = true)}
 		onExport={handleExport}
