@@ -1,6 +1,12 @@
 import { appStore } from '../stores/appStore.svelte.ts';
 import type { DocumentPage, TCanvasElement } from '../types/canvas';
-import { dragPosition, findElementAt, type Point, type Size } from '../utils/geometry';
+import {
+	boundingRect,
+	dragPosition,
+	findElementAt,
+	type Point,
+	type Size
+} from '../utils/geometry';
 import { eventPoint, trackPointer } from './pointer';
 
 interface Options {
@@ -12,10 +18,15 @@ interface Options {
 	onHover: (elementId: string | null) => void;
 }
 
+/** Pointer movement (screen pixels) below which a press counts as a click, not a drag */
+const CLICK_SLOP = 3;
+
 interface Session {
 	elementId: string;
 	pageId: string;
-	origin: Point; // where the element started, in page pixels
+	/** Every element that moves: just the dragged one, or the whole selection */
+	items: Array<{ id: string; origin: Point }>;
+	origin: Point; // where the element (or the selection's bounding box) started, in page pixels
 	size: Size;
 	pointerStart: Point; // screen pixels
 	pointer: Point; // latest screen pixels
@@ -30,6 +41,7 @@ interface Session {
 export function createElementDrag(options: Options) {
 	let isDragging = $state(false);
 	let session: Session | null = null;
+	let moved = false;
 
 	/** Move the element to where the pointer is now. */
 	function apply() {
@@ -44,6 +56,20 @@ export function createElementDrag(options: Options) {
 			y: (session.pointer.y - session.pointerStart.y) * (height / rect.height)
 		};
 		const position = dragPosition(session.origin, delta, session.size, page.boundaries);
+
+		// A group moves as one box: no re-parenting
+		if (session.items.length > 1) {
+			const dx = position.x - session.origin.x;
+			const dy = position.y - session.origin.y;
+			options.onHover(null);
+			appStore.moveElements(
+				session.pageId,
+				Object.fromEntries(
+					session.items.map((item) => [item.id, { x: item.origin.x + dx, y: item.origin.y + dy }])
+				)
+			);
+			return;
+		}
 
 		// The element under the dragged element's centre is the future parent
 		const parent = findElementAt(
@@ -85,7 +111,7 @@ export function createElementDrag(options: Options) {
 		apply(); // the last move may not have had its animation frame yet
 
 		const { elementId, pageId } = session;
-		const latest = appStore.findElement(pageId, elementId);
+		const latest = session.items.length === 1 ? appStore.findElement(pageId, elementId) : null;
 		if (latest) {
 			const parent = findElementAt(
 				Object.values(options.getPage().elements),
@@ -110,13 +136,22 @@ export function createElementDrag(options: Options) {
 		event.stopPropagation();
 		if (session) teardown();
 
+		// Dragging a selected element moves the whole selection; any other element is selected first
+		// (with the rest of its group, if it has one)
+		if (!appStore.isSelected(element.id)) appStore.selectElement(element);
+		const selected = appStore.getSelectedElements();
+		const moving = selected.length ? selected : [element];
+		const box = boundingRect(moving)!;
+
 		const pointer = eventPoint(event);
 		isDragging = true;
+		moved = false;
 		session = {
 			elementId: element.id,
 			pageId: element.pageId,
-			origin: { x: element.x, y: element.y },
-			size: { width: element.width, height: element.height },
+			items: moving.map((el) => ({ id: el.id, origin: { x: el.x, y: el.y } })),
+			origin: { x: box.x, y: box.y },
+			size: { width: box.width, height: box.height },
 			pointerStart: pointer,
 			pointer,
 			frame: null,
@@ -124,6 +159,12 @@ export function createElementDrag(options: Options) {
 				onMove: (point) => {
 					if (!session) return;
 					session.pointer = point;
+					if (
+						Math.abs(point.x - session.pointerStart.x) > CLICK_SLOP ||
+						Math.abs(point.y - session.pointerStart.y) > CLICK_SLOP
+					) {
+						moved = true;
+					}
 					schedule();
 				},
 				onEnd: finish
@@ -138,6 +179,12 @@ export function createElementDrag(options: Options) {
 			return isDragging;
 		},
 		start,
+		/** Was there a drag since the last call? The click that ends a drag must not change the selection. */
+		consumeMoved() {
+			const wasMoved = moved;
+			moved = false;
+			return wasMoved;
+		},
 		/** Abort the drag (Escape): the element stays where it is, without re-parenting. */
 		cancel: teardown
 	};

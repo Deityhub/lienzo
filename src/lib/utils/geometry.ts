@@ -24,6 +24,29 @@ export function rectsOverlap(a: Rect, b: Rect): boolean {
 	);
 }
 
+/** The smallest rectangle containing all the rectangles, or null for none. */
+export function boundingRect(rects: Rect[]): Rect | null {
+	if (!rects.length) return null;
+	const x = Math.min(...rects.map((r) => r.x));
+	const y = Math.min(...rects.map((r) => r.y));
+	return {
+		x,
+		y,
+		width: Math.max(...rects.map((r) => r.x + r.width)) - x,
+		height: Math.max(...rects.map((r) => r.y + r.height)) - y
+	};
+}
+
+/** The rectangle between two corner points, whichever way round they are. */
+export function rectBetween(a: Point, b: Point): Rect {
+	return {
+		x: Math.min(a.x, b.x),
+		y: Math.min(a.y, b.y),
+		width: Math.abs(a.x - b.x),
+		height: Math.abs(a.y - b.y)
+	};
+}
+
 /** Elements (other than `element` itself) that overlap `element`. */
 export function getOverlappingElements(
 	element: TCanvasElement,
@@ -99,6 +122,119 @@ export function constrainToBoundaries(element: Rect, boundaries: RulerBoundaries
 	if (y + height > vertical.end) y = vertical.end - height;
 
 	return { x, y, width, height };
+}
+
+/**
+ * Fit a group into the boundaries as one: it moves without changing the layout inside it. Only a group
+ * too big for the boundaries is scaled down (keeping its proportions) until it fits.
+ */
+export function constrainGroupToBoundaries(rects: Rect[], boundaries: RulerBoundaries): Rect[] {
+	const box = boundingRect(rects);
+	if (!box) return [];
+	const { horizontal, vertical } = boundaries;
+
+	const factor = Math.min(
+		1,
+		(horizontal.end - horizontal.start) / box.width,
+		(vertical.end - vertical.start) / box.height
+	);
+	const width = box.width * factor;
+	const height = box.height * factor;
+	const x = Math.max(horizontal.start, Math.min(box.x, horizontal.end - width));
+	const y = Math.max(vertical.start, Math.min(box.y, vertical.end - height));
+
+	return rects.map((r) => ({
+		x: x + (r.x - box.x) * factor,
+		y: y + (r.y - box.y) * factor,
+		width: r.width * factor,
+		height: r.height * factor
+	}));
+}
+
+/**
+ * What has to change so every element fits the boundaries: elements of a group are fitted together,
+ * the others one by one. Returns only the elements that change.
+ */
+export function boundaryAdjustments(
+	elements: TCanvasElement[],
+	boundaries: RulerBoundaries
+): Record<string, Rect> {
+	const groups: Record<string, TCanvasElement[]> = {};
+	const fitted: Array<[TCanvasElement, Rect]> = [];
+
+	for (const el of elements) {
+		if (el.groupId) (groups[el.groupId] ??= []).push(el);
+		else fitted.push([el, constrainToBoundaries(el, boundaries)]);
+	}
+	for (const members of Object.values(groups)) {
+		const rects = constrainGroupToBoundaries(members, boundaries);
+		members.forEach((el, i) => fitted.push([el, rects[i]]));
+	}
+
+	const changes: Record<string, Rect> = {};
+	for (const [el, next] of fitted) {
+		if (
+			next.x !== el.x ||
+			next.y !== el.y ||
+			next.width !== el.width ||
+			next.height !== el.height
+		) {
+			changes[el.id] = next;
+		}
+	}
+	return changes;
+}
+
+export type Corner = 'nw' | 'ne' | 'sw' | 'se';
+
+/** The point of a box that stays in place while it is resized from `corner`: the opposite corner. */
+export function oppositeCorner(box: Rect, corner: Corner): Point {
+	return {
+		x: corner.includes('e') ? box.x : box.x + box.width,
+		y: corner.includes('s') ? box.y : box.y + box.height
+	};
+}
+
+/** The smallest factor a group can be scaled by before one of its elements gets smaller than the minimum size. */
+export function minScaleFactor(rects: Rect[]): number {
+	const smallest = Math.min(...rects.flatMap((r) => [r.width, r.height]));
+	return Math.min(1, MIN_ELEMENT_SIZE / smallest);
+}
+
+/**
+ * How much a group's box grows or shrinks when its `corner` handle moves by `delta`, keeping its proportions:
+ * the average of the horizontal and vertical change. Limited so no element gets too small and the box
+ * stays inside the boundaries.
+ */
+export function groupScaleFactor(
+	box: Rect,
+	corner: Corner,
+	delta: Point,
+	boundaries: RulerBoundaries,
+	minFactor: number
+): number {
+	const dx = corner.includes('e') ? delta.x : -delta.x;
+	const dy = corner.includes('s') ? delta.y : -delta.y;
+	let factor = 1 + (dx / box.width + dy / box.height) / 2;
+
+	const { horizontal, vertical } = boundaries;
+	const anchor = oppositeCorner(box, corner);
+	const room = {
+		x: corner.includes('e') ? horizontal.end - anchor.x : anchor.x - horizontal.start,
+		y: corner.includes('s') ? vertical.end - anchor.y : anchor.y - vertical.start
+	};
+	factor = Math.min(factor, room.x / box.width, room.y / box.height);
+	return Math.max(factor, minFactor);
+}
+
+/** The rectangles scaled by `factor` around the `anchor` point, positions and sizes alike. */
+export function scaleRects(rects: Rect[], anchor: Point, factor: number): Rect[] {
+	return rects.map((r) => ({
+		x: anchor.x + (r.x - anchor.x) * factor,
+		y: anchor.y + (r.y - anchor.y) * factor,
+		width: r.width * factor,
+		height: r.height * factor
+	}));
 }
 
 /** New rectangle while resizing from a handle, `delta` being how far the pointer moved. */

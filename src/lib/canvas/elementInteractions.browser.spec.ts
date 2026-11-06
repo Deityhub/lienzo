@@ -4,6 +4,8 @@ import { appStore } from '../stores/appStore.svelte.ts';
 import type { ResizeDirection, TCanvasElement } from '../types/canvas';
 import { createElementDrag } from './elementDrag.svelte';
 import { createElementResize } from './elementResize.svelte';
+import { createGroupResize } from './groupResize.svelte';
+import { createMarquee } from './marquee.svelte';
 
 // The canvas is 1000x1000 screen pixels showing a 2000x2000 page: every screen pixel is 2 page pixels.
 const SIZE = { width: 2000, height: 2000 };
@@ -204,6 +206,92 @@ describe('createElementDrag', () => {
 
 		expect(drag.isDragging).toBe(false);
 	});
+
+	describe('with several elements selected', () => {
+		it('moves them all together by the same amount', async () => {
+			const a = addShape(300, 300, 100, 100);
+			const b = addShape(600, 500, 100, 100);
+			appStore.selectElements(pageId, [a.id, b.id]);
+			const drag = makeDrag();
+
+			drag.start(pointerEvent('pointerdown', 0, 0), a);
+			move(50, 30);
+			await frames();
+
+			expect(current(a)).toMatchObject({ x: 400, y: 360 });
+			expect(current(b)).toMatchObject({ x: 700, y: 560 });
+			release();
+			expect(appStore.getSelectedElements().map((el) => el.id)).toEqual([a.id, b.id]);
+		});
+
+		it('keeps the whole group inside the boundaries, preserving the distance between elements', async () => {
+			const a = addShape(300, 300, 100, 100);
+			const b = addShape(600, 500, 100, 100);
+			appStore.selectElements(pageId, [a.id, b.id]);
+			const { horizontal } = appStore.getPages()[pageId].boundaries;
+			const drag = makeDrag();
+
+			drag.start(pointerEvent('pointerdown', 0, 0), a);
+			move(100000, 0);
+			await frames();
+
+			expect(current(b).x).toBe(horizontal.end - 100); // the rightmost element reaches the edge
+			expect(current(b).x - current(a).x).toBe(300);
+			release();
+		});
+
+		it('dragging a member of a group moves the whole group, even when it is not selected', async () => {
+			const a = addShape(300, 300, 100, 100);
+			const b = addShape(600, 500, 100, 100);
+			const c = addShape(900, 900, 100, 100);
+			appStore.selectElements(pageId, [a.id, b.id]);
+			appStore.groupSelected();
+			appStore.selectElement(c);
+			const drag = makeDrag();
+
+			drag.start(pointerEvent('pointerdown', 0, 0), a);
+			move(50, 30);
+			await frames();
+
+			expect(current(a)).toMatchObject({ x: 400, y: 360 });
+			expect(current(b)).toMatchObject({ x: 700, y: 560 });
+			expect(current(c)).toMatchObject({ x: 900, y: 900 });
+			release();
+		});
+
+		it('dragging an element outside the selection selects just that element', async () => {
+			const a = addShape(300, 300, 100, 100);
+			const b = addShape(600, 500, 100, 100);
+			const c = addShape(900, 900, 100, 100);
+			appStore.selectElements(pageId, [a.id, b.id]);
+			const drag = makeDrag();
+
+			drag.start(pointerEvent('pointerdown', 0, 0), c);
+			move(10, 0);
+			await frames();
+
+			expect(current(c).x).toBe(920);
+			expect(current(a).x).toBe(300);
+			expect(appStore.getSelectedElements().map((el) => el.id)).toEqual([c.id]);
+			release();
+		});
+	});
+
+	it('tells a click from a drag', async () => {
+		const el = addShape(300, 300, 100, 100);
+		const drag = makeDrag();
+
+		drag.start(pointerEvent('pointerdown', 10, 10), el);
+		move(11, 11);
+		release();
+		expect(drag.consumeMoved()).toBe(false);
+
+		drag.start(pointerEvent('pointerdown', 10, 10), el);
+		move(40, 40);
+		release();
+		expect(drag.consumeMoved()).toBe(true);
+		expect(drag.consumeMoved()).toBe(false); // read once
+	});
 });
 
 describe('createElementResize', () => {
@@ -298,5 +386,162 @@ describe('createElementResize', () => {
 
 		document.dispatchEvent(touchEvent('touchcancel', 25, 25));
 		expect(resize.isResizing).toBe(false);
+	});
+});
+
+describe('createMarquee', () => {
+	it('selects the elements the box touches while it grows', () => {
+		const a = addShape(200, 200, 100, 100);
+		const b = addShape(800, 800, 100, 100);
+		const far = addShape(1500, 1500, 100, 100);
+		appStore.selectElement(null);
+		const marquee = createMarquee(options());
+
+		marquee.start(pointerEvent('pointerdown', 50, 50), false); // page 100,100
+		move(250, 250); // page 500,500
+		expect(marquee.box).toEqual({ x: 100, y: 100, width: 400, height: 400 });
+		expect(appStore.getSelectedElements().map((el) => el.id)).toEqual([a.id]);
+
+		move(500, 500); // page 1000,1000
+		expect(appStore.getSelectedElements().map((el) => el.id)).toEqual([a.id, b.id]);
+		expect(appStore.isSelected(far.id)).toBe(false);
+
+		release();
+		expect(marquee.box).toBeNull();
+		expect(marquee.consumeMoved()).toBe(true);
+	});
+
+	it('selects a whole group when the box touches one of its members', () => {
+		const a = addShape(200, 200, 100, 100);
+		const b = addShape(1500, 1500, 100, 100);
+		appStore.selectElements(pageId, [a.id, b.id]);
+		appStore.groupSelected();
+		appStore.selectElement(null);
+		const marquee = createMarquee(options());
+
+		marquee.start(pointerEvent('pointerdown', 50, 50), false);
+		move(200, 200); // only touches a
+		release();
+
+		expect(
+			appStore
+				.getSelectedElements()
+				.map((el) => el.id)
+				.sort()
+		).toEqual([a.id, b.id].sort());
+	});
+
+	it('adds to the current selection when additive', () => {
+		const a = addShape(200, 200, 100, 100);
+		const b = addShape(800, 800, 100, 100);
+		appStore.selectElement(a);
+		const marquee = createMarquee(options());
+
+		marquee.start(pointerEvent('pointerdown', 350, 350), true);
+		move(500, 500);
+
+		expect(
+			appStore
+				.getSelectedElements()
+				.map((el) => el.id)
+				.sort()
+		).toEqual([a.id, b.id].sort());
+		release();
+	});
+
+	it('a press without movement is a click and changes nothing', () => {
+		const a = addShape(200, 200, 100, 100);
+		appStore.selectElement(a);
+		const marquee = createMarquee(options());
+
+		marquee.start(pointerEvent('pointerdown', 700, 700), false);
+		move(701, 701);
+		release();
+
+		expect(marquee.consumeMoved()).toBe(false);
+		expect(appStore.getSelectedElements().map((el) => el.id)).toEqual([a.id]);
+	});
+});
+
+describe('createGroupResize', () => {
+	function addText(x: number, y: number, width: number, height: number, fontSize: number) {
+		appStore.addElement({ type: 'text', x, y, pageId, width, height });
+		const el = appStore.getSelectedElement()!;
+		appStore.updateElement({ elementId: el.id, updates: { fontSize }, pageId });
+		return current(el);
+	}
+
+	/** Two shapes and a text, 300x100 in total at page 300,300, all selected */
+	function setup() {
+		const a = addShape(300, 300, 100, 100);
+		const b = addShape(500, 300, 100, 100);
+		const t = addText(300, 300, 100, 100, 20);
+		appStore.selectElements(pageId, [a.id, b.id, t.id]);
+		return { a, b, t, resize: createGroupResize(options()) };
+	}
+
+	it('scales positions, sizes and text sizes together from the opposite corner', async () => {
+		const { a, b, t, resize } = setup();
+
+		resize.start(pointerEvent('pointerdown', 0, 0), 'se');
+		move(75, 25); // page 150, 50: the box (300x100) grows by 1.5
+		await frames();
+
+		expect(current(a)).toMatchObject({ x: 300, y: 300, width: 150, height: 150 });
+		expect(current(b)).toMatchObject({ x: 600, y: 300, width: 150, height: 150 });
+		expect(current(t)).toMatchObject({ x: 300, y: 300, width: 150, height: 150 });
+		expect((current(t) as { fontSize: number }).fontSize).toBe(30);
+		release();
+	});
+
+	it('works from the top-left corner, keeping the bottom-right in place', async () => {
+		const { a, b, resize } = setup();
+
+		resize.start(pointerEvent('pointerdown', 0, 0), 'nw');
+		move(-75, -25);
+		await frames();
+
+		// anchor is the bottom-right of the box (600, 400)
+		expect(current(b)).toMatchObject({ x: 450, y: 250, width: 150, height: 150 });
+		expect(current(a).x).toBe(600 - 300 * 1.5);
+		release();
+	});
+
+	it('is one change per move and applies the final position on release', () => {
+		const { a, resize } = setup();
+		resize.start(pointerEvent('pointerdown', 0, 0), 'se');
+		move(75, 25);
+		release();
+
+		expect(current(a).width).toBe(150);
+		expect(resize.isResizing).toBe(false);
+	});
+
+	it('stays inside the boundaries and above the minimum size', async () => {
+		const { a, b, resize } = setup();
+		const { horizontal } = appStore.getPages()[pageId].boundaries;
+
+		resize.start(pointerEvent('pointerdown', 0, 0), 'se');
+		move(100000, 100000);
+		await frames();
+		expect(current(b).x + current(b).width).toBeLessThanOrEqual(horizontal.end);
+
+		move(-100000, -100000);
+		await frames();
+		expect(current(a).width).toBeGreaterThanOrEqual(20);
+		release();
+	});
+
+	it('does not drift: the result depends on where the pointer is, not on the path', async () => {
+		const { a, resize } = setup();
+
+		resize.start(pointerEvent('pointerdown', 0, 0), 'se');
+		move(100, 100);
+		await frames();
+		move(75, 25);
+		await frames();
+
+		expect(current(a).width).toBe(150);
+		release();
 	});
 });

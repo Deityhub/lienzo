@@ -6,16 +6,26 @@
 	import type { DocumentPage, TCanvasInstance } from '$lib/types/canvas';
 	import { pixelsToPercent } from '$lib/utils';
 	import {
-		constrainToBoundaries,
+		boundaryAdjustments,
+		boundingRect,
 		dragPreviewRect,
 		findElementAt,
 		getOverlappingElements
 	} from '$lib/utils/geometry';
 	import { createElementDrag } from '$lib/canvas/elementDrag.svelte';
 	import { createElementResize } from '$lib/canvas/elementResize.svelte';
+	import { createGroupResize } from '$lib/canvas/groupResize.svelte';
+	import { createMarquee } from '$lib/canvas/marquee.svelte';
+	import type { TCanvasElement } from '$lib/types/canvas';
 
 	const selectedElement = $derived(appStore.getSelectedElement());
 	const scale = $derived(appStore.getScale());
+	const multiSelectMode = $derived(appStore.getMultiSelectMode());
+	const selectedHere = $derived(
+		appStore.getSelectedElements().filter((el) => el.pageId === page.id)
+	);
+	// A box around the selection, when several elements are selected
+	const selectionBox = $derived(selectedHere.length > 1 ? boundingRect(selectedHere) : null);
 
 	interface CanvasProps {
 		page: DocumentPage;
@@ -70,6 +80,25 @@
 		onHover: (elementId) => (hoveredElementId = elementId)
 	});
 	const resize = createElementResize(pointerOptions);
+	const groupResize = createGroupResize(pointerOptions);
+	const marquee = createMarquee(pointerOptions);
+	const corners = ['nw', 'ne', 'sw', 'se'] as const;
+
+	/** Shift/Ctrl/Cmd, or the select-multiple mode: add to the selection instead of replacing it */
+	const isAdditive = (event: MouseEvent | PointerEvent | TouchEvent) =>
+		multiSelectMode || event.shiftKey || event.ctrlKey || event.metaKey;
+
+	function handleElementPress(event: PointerEvent | TouchEvent, element: TCanvasElement) {
+		// An unselected element is added by the click that follows, not dragged
+		if (isAdditive(event) && !appStore.isSelected(element.id)) return;
+		drag.start(event, element);
+	}
+
+	function handleElementClick(event: MouseEvent, element: TCanvasElement) {
+		if (drag.consumeMoved()) return; // the click that ends a drag
+		if (isAdditive(event)) appStore.toggleSelected(element);
+		else if (!appStore.isSelected(element.id)) appStore.selectElement(element);
+	}
 
 	// Update highlighted elements when selection changes
 	$effect(() => {
@@ -81,21 +110,10 @@
 		}
 	});
 
-	// Constrain all elements to boundaries when boundaries change
+	// Fit the elements into the boundaries when they change; the elements of a group stay together
 	function constrainElementsToBoundaries() {
-		for (const element of Object.values(page.elements)) {
-			const next = constrainToBoundaries(element, page.boundaries);
-
-			// Only update if something actually changed to avoid unnecessary re-renders
-			if (
-				next.x !== element.x ||
-				next.y !== element.y ||
-				next.width !== element.width ||
-				next.height !== element.height
-			) {
-				appStore.updateElement({ elementId: element.id, updates: next, pageId: element.pageId });
-			}
-		}
+		const changes = boundaryAdjustments(Object.values(page.elements), page.boundaries);
+		if (Object.keys(changes).length) appStore.updateElements(page.id, changes);
 	}
 
 	// Watch for boundary changes and constrain elements
@@ -117,8 +135,9 @@
 			);
 
 			const isInsidePropertyPanel = propertyPanel?.contains(event.target as Node);
+			const keepsSelection = (event.target as Element).closest?.('[data-keep-selection]');
 
-			if (!isInsideAnyCanvas && !isInsidePropertyPanel) {
+			if (!isInsideAnyCanvas && !isInsidePropertyPanel && !keepsSelection) {
 				appStore.selectElement(null);
 			}
 		};
@@ -131,6 +150,7 @@
 
 	function handleCanvasClick(event: MouseEvent) {
 		if (event.target === canvasRef) {
+			if (marquee.consumeMoved()) return; // the click that ends a selection box
 			appStore.selectElement(null);
 		}
 	}
@@ -219,7 +239,14 @@
 				class="relative bg-background shadow-lg"
 				style:width="{width * scale}px"
 				style:height="{height * scale}px"
+				style:touch-action={multiSelectMode ? 'none' : undefined}
 				onclick={handleCanvasClick}
+				onpointerdown={(e) => {
+					// Touch screens scroll with a finger, so a selection box needs the select-multiple mode there
+					if (e.target === canvasRef && (e.pointerType !== 'touch' || multiSelectMode)) {
+						marquee.start(e, isAdditive(e));
+					}
+				}}
 				role="button"
 				tabindex="0"
 				onkeydown={(e) => {
@@ -255,7 +282,7 @@
 
 				<!-- Render all elements (sorted by zIndex) -->
 				{#each Object.values(page.elements).sort((a, b) => a.zIndex - b.zIndex) as element (element.id)}
-					{@const isSelected = selectedElement?.id === element.id}
+					{@const isSelected = appStore.isSelected(element.id)}
 					{@const isHighlighted = highlightedElementIds.includes(element.id)}
 					{@const isHovered = hoveredElementId === element.id}
 					<div
@@ -268,24 +295,79 @@
 							? 'ring-2 ring-primary'
 							: ''} {isHovered ? 'ring-primary' : ''} {isHighlighted && !isSelected
 							? 'ring-primary/30'
-							: ''}"
-						class:transition-none={drag.isDragging || resize.isResizing}
+							: ''} {multiSelectMode ? '[&>div]:pointer-events-none' : ''}"
+						class:transition-none={drag.isDragging || resize.isResizing || groupResize.isResizing}
 						style:left={pixelsToPercent(element.x, width)}
 						style:top={pixelsToPercent(element.y, height)}
 						style:width={pixelsToPercent(element.width, width)}
 						style:height={pixelsToPercent(element.height, height)}
 						style:z-index={element.zIndex}
 						style:touch-action="none"
-						onpointerdown={(e) => drag.start(e, element)}
-						ontouchstart={(e) => drag.start(e, element)}
+						onpointerdown={(e) => handleElementPress(e, element)}
+						ontouchstart={(e) => handleElementPress(e, element)}
+						onclick={(e) => handleElementClick(e, element)}
 					>
 						<CanvasElement
 							{element}
-							{isSelected}
+							isSelected={isSelected && selectedHere.length === 1}
 							onResize={(event, direction) => resize.start(event, element, direction)}
 						/>
 					</div>
 				{/each}
+
+				<!-- Box around a multiple selection, and the selection box being dragged -->
+				{#if selectionBox}
+					<div
+						class="pointer-events-none absolute border-2 border-dashed border-primary"
+						style:left={pixelsToPercent(selectionBox.x, width)}
+						style:top={pixelsToPercent(selectionBox.y, height)}
+						style:width={pixelsToPercent(selectionBox.width, width)}
+						style:height={pixelsToPercent(selectionBox.height, height)}
+						style:z-index="9998"
+						data-testid="selection-box"
+						data-html2canvas-ignore
+					>
+						<!-- Corner handles resize everything in the box, keeping its proportions -->
+						{#each corners as corner (corner)}
+							<div
+								class="pointer-events-auto absolute h-3 w-3 rounded-full border-2 border-primary-foreground bg-primary shadow-md {corner ===
+								'nw'
+									? '-top-1.5 -left-1.5 cursor-nw-resize'
+									: corner === 'ne'
+										? '-top-1.5 -right-1.5 cursor-ne-resize'
+										: corner === 'sw'
+											? '-bottom-1.5 -left-1.5 cursor-sw-resize'
+											: '-right-1.5 -bottom-1.5 cursor-se-resize'}"
+								style:touch-action="none"
+								onpointerdown={(e) => {
+									e.preventDefault();
+									e.stopPropagation();
+									groupResize.start(e, corner);
+								}}
+								ontouchstart={(e) => {
+									e.stopPropagation();
+									groupResize.start(e, corner);
+								}}
+								role="button"
+								tabindex="0"
+								onkeydown={null}
+								data-testid={`group-resize-handle-${corner}`}
+							></div>
+						{/each}
+					</div>
+				{/if}
+				{#if marquee.box}
+					<div
+						class="pointer-events-none absolute border border-primary bg-primary/10"
+						style:left={pixelsToPercent(marquee.box.x, width)}
+						style:top={pixelsToPercent(marquee.box.y, height)}
+						style:width={pixelsToPercent(marquee.box.width, width)}
+						style:height={pixelsToPercent(marquee.box.height, height)}
+						style:z-index="9999"
+						data-testid="marquee"
+						data-html2canvas-ignore
+					></div>
+				{/if}
 
 				<!-- Drag preview -->
 				{#if dragPreview}

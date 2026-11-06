@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import type { RulerBoundaries, TCanvasElement } from '../types/canvas';
 import {
+	boundaryAdjustments,
+	groupScaleFactor,
+	minScaleFactor,
+	oppositeCorner,
+	scaleRects,
+	boundingRect,
+	constrainGroupToBoundaries,
 	clampPosition,
 	constrainToBoundaries,
 	dragPosition,
@@ -8,6 +15,7 @@ import {
 	findElementAt,
 	newElementPlacement,
 	getOverlappingElements,
+	rectBetween,
 	rectsOverlap,
 	resizeRect,
 	snapToBoundaries
@@ -318,5 +326,150 @@ describe('newElementPlacement', () => {
 		expect(newElementPlacement({ x: 900, y: 900 }, bounds, [below, above]).parentElementId).toBe(
 			null
 		);
+	});
+});
+
+describe('boundingRect', () => {
+	it('contains all the rectangles', () => {
+		expect(
+			boundingRect([
+				{ x: 10, y: 20, width: 30, height: 40 },
+				{ x: 100, y: 5, width: 10, height: 10 }
+			])
+		).toEqual({ x: 10, y: 5, width: 100, height: 55 });
+	});
+	it('is null for nothing', () => expect(boundingRect([])).toBeNull());
+});
+
+describe('rectBetween', () => {
+	it('works whichever corner comes first', () => {
+		expect(rectBetween({ x: 50, y: 10 }, { x: 20, y: 40 })).toEqual({
+			x: 20,
+			y: 10,
+			width: 30,
+			height: 30
+		});
+	});
+});
+
+describe('constrainGroupToBoundaries', () => {
+	// boundaries: x 100..700, y 100..1000
+	const group = [
+		{ x: 200, y: 200, width: 100, height: 100 },
+		{ x: 400, y: 300, width: 100, height: 100 }
+	];
+
+	it('leaves a group that fits alone', () => {
+		expect(constrainGroupToBoundaries(group, bounds)).toEqual(group);
+	});
+
+	it('moves the whole group without changing the layout inside it', () => {
+		const moved = group.map((r) => ({ ...r, x: r.x + 300 })); // sticks out on the right (box 500..800)
+		const fitted = constrainGroupToBoundaries(moved, bounds);
+
+		expect(fitted[1].x + fitted[1].width).toBe(700); // the right edge of the group is at the boundary
+		expect(fitted[1].x - fitted[0].x).toBe(200); // spacing kept
+		expect(fitted[1].y - fitted[0].y).toBe(100);
+		expect(fitted.map((r) => r.width)).toEqual([100, 100]);
+	});
+
+	it('moves a group that is above or left of the boundaries to the corner', () => {
+		const outside = group.map((r) => ({ ...r, x: r.x - 150, y: r.y - 150 }));
+		const [first] = constrainGroupToBoundaries(outside, bounds);
+		expect(first).toMatchObject({ x: 100, y: 100 });
+	});
+
+	it('scales down a group that is too big, keeping its proportions', () => {
+		const huge = [
+			{ x: 100, y: 100, width: 1200, height: 400 },
+			{ x: 100, y: 500, width: 1200, height: 400 }
+		]; // 1200x800 in a 600x900 area: half size
+		const fitted = constrainGroupToBoundaries(huge, bounds);
+
+		expect(fitted[0]).toEqual({ x: 100, y: 100, width: 600, height: 200 });
+		expect(fitted[1]).toEqual({ x: 100, y: 300, width: 600, height: 200 });
+	});
+});
+
+describe('boundaryAdjustments', () => {
+	const el = (id: string, x: number, groupId?: string) =>
+		({
+			id,
+			type: 'shape',
+			pageId: 'p',
+			zIndex: 0,
+			x,
+			y: 200,
+			width: 100,
+			height: 100,
+			groupId
+		}) as TCanvasElement;
+
+	it('returns only what changes', () => {
+		expect(boundaryAdjustments([el('a', 200), el('b', 300)], bounds)).toEqual({});
+	});
+
+	it('fits single elements one by one and grouped elements together', () => {
+		const changes = boundaryAdjustments(
+			[el('single', 650), el('g1', 500, 'g'), el('g2', 650, 'g')], // g spans 500..750, 50 too far right
+			bounds
+		);
+
+		expect(changes.single).toMatchObject({ x: 600 });
+		expect(changes.g1).toMatchObject({ x: 450 });
+		expect(changes.g2).toMatchObject({ x: 600 });
+		expect(changes.g2.x - changes.g1.x).toBe(150); // the group kept its shape
+	});
+});
+
+describe('group scaling', () => {
+	// boundaries: x 100..700, y 100..1000
+	const box = { x: 200, y: 200, width: 200, height: 100 };
+
+	it('the anchor is the corner opposite the handle', () => {
+		expect(oppositeCorner(box, 'se')).toEqual({ x: 200, y: 200 });
+		expect(oppositeCorner(box, 'nw')).toEqual({ x: 400, y: 300 });
+		expect(oppositeCorner(box, 'ne')).toEqual({ x: 200, y: 300 });
+		expect(oppositeCorner(box, 'sw')).toEqual({ x: 400, y: 200 });
+	});
+
+	it('scales positions and sizes around the anchor', () => {
+		const scaled = scaleRects(
+			[
+				{ x: 200, y: 200, width: 100, height: 50 },
+				{ x: 300, y: 250, width: 100, height: 50 }
+			],
+			{ x: 200, y: 200 },
+			2
+		);
+		expect(scaled).toEqual([
+			{ x: 200, y: 200, width: 200, height: 100 },
+			{ x: 400, y: 300, width: 200, height: 100 }
+		]);
+	});
+
+	it('the factor follows the handle, averaging horizontal and vertical movement', () => {
+		expect(groupScaleFactor(box, 'se', { x: 100, y: 50 }, bounds, 0.1)).toBe(1.5);
+		expect(groupScaleFactor(box, 'se', { x: 0, y: 0 }, bounds, 0.1)).toBe(1);
+		// dragging a top-left handle up and left grows the group
+		expect(groupScaleFactor(box, 'nw', { x: -100, y: -50 }, bounds, 0.1)).toBe(1.5);
+		expect(groupScaleFactor(box, 'se', { x: -100, y: -50 }, bounds, 0.1)).toBe(0.5);
+	});
+
+	it('never grows past the boundaries', () => {
+		// the box starts at x 200 and the right boundary is 700: at most 500/200 = 2.5 times as wide
+		expect(groupScaleFactor(box, 'se', { x: 5000, y: 5000 }, bounds, 0.1)).toBe(2.5);
+		// from the left handle the anchor is the right edge (400): 300/200 = 1.5
+		expect(groupScaleFactor(box, 'nw', { x: -5000, y: -5000 }, bounds, 0.1)).toBe(1.5);
+	});
+
+	it('never shrinks an element below the minimum size', () => {
+		const rects = [
+			{ x: 0, y: 0, width: 100, height: 40 },
+			{ x: 0, y: 0, width: 300, height: 300 }
+		];
+		expect(minScaleFactor(rects)).toBe(0.5); // 20 / 40
+		expect(minScaleFactor([{ x: 0, y: 0, width: 10, height: 10 }])).toBe(1); // already small: no further shrinking
+		expect(groupScaleFactor(box, 'se', { x: -5000, y: -5000 }, bounds, 0.5)).toBe(0.5);
 	});
 });

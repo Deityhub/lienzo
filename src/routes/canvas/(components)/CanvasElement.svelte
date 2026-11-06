@@ -1,6 +1,5 @@
 <script lang="ts">
 	import type { TCanvasElement, ResizeDirection } from '$lib/types/canvas';
-	import { appStore } from '$lib/stores/appStore.svelte.ts';
 	import TextElementView from './elements/TextElementView.svelte';
 	import ShapeElementView from './elements/ShapeElementView.svelte';
 	import ImageElementView from './elements/ImageElementView.svelte';
@@ -15,14 +14,7 @@
 	const { element, isSelected, onResize }: Props = $props();
 </script>
 
-<div
-	class="relative h-full w-full"
-	style:z-index={element.zIndex || 0}
-	onclick={() => appStore.selectElement(element)}
-	role="button"
-	tabindex="0"
-	onkeydown={null}
->
+<div class="relative h-full w-full" style:z-index={element.zIndex || 0}>
 	{#if element.type === 'text'}
 		<TextElementView {element} />
 	{:else if element.type === 'shape'}
