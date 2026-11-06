@@ -4,7 +4,7 @@
 	const { ...props }: SVGAttributes<SVGElement> = $props();
 </script>
 
-<!-- Two stacked A4 pages: the front one carries text lines, the back one is a tint of the brand -->
+<!-- The Lienzo layers mark in white, on a rounded brand-blue tile -->
 <svg
 	width="32"
 	height="32"
@@ -14,12 +14,10 @@
 	aria-hidden="true"
 	{...props}
 >
-	<rect x="3" y="7" width="18" height="22" rx="3" class="fill-primary/40" />
-	<rect x="9" y="3" width="18" height="22" rx="3" class="fill-primary" />
-	<path
-		d="M14 11h8M14 15h8M14 19h5"
-		class="stroke-primary-foreground"
-		stroke-width="2"
-		stroke-linecap="round"
-	/>
+	<rect width="32" height="32" rx="8" class="fill-primary" />
+	<g transform="translate(5 5)" class="stroke-primary-foreground">
+		<path d="M12 2L2 7L12 12L22 7L12 2Z" class="fill-primary-foreground" stroke-linejoin="round" />
+		<path d="M2 17L12 22L22 17" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+		<path d="M2 12L12 17L22 12" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+	</g>
 </svg>

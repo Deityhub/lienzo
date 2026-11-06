@@ -26,9 +26,10 @@ test.describe('SEO', () => {
 		const jsonLd = JSON.parse(
 			(await page.locator('script[type="application/ld+json"]').textContent()) ?? '{}'
 		);
-		expect(jsonLd['@type']).toBe('WebApplication');
-		expect(jsonLd.url).toBe(SITE);
-		expect(jsonLd.author).toMatchObject({
+		const app = jsonLd['@graph'][0];
+		expect(app['@type']).toBe('WebApplication');
+		expect(app.url).toBe(SITE);
+		expect(app.author).toMatchObject({
 			'@type': 'Person',
 			name: 'Chizoba Jude Ojini',
 			url: 'https://judeojini.com'

@@ -3,13 +3,13 @@ import { expect, test } from '@playwright/test';
 test.describe('Document Builder E2E Tests', () => {
 	test('home page loads correctly', async ({ page }) => {
 		await page.goto('/');
-		await expect(page.locator('h1')).toContainText('Create Beautiful Documents');
-		await expect(page.getByRole('link', { name: 'Start Building' }).first()).toBeVisible();
+		await expect(page.locator('h1')).toContainText('Design it. Export it. Edit it again.');
+		await expect(page.getByRole('link', { name: 'Start designing' }).first()).toBeVisible();
 	});
 
 	test('navigate to create page', async ({ page }) => {
 		await page.goto('/');
-		await page.getByRole('link', { name: 'Start Building' }).first().click();
+		await page.getByRole('link', { name: 'Start designing' }).first().click();
 		await expect(page).toHaveURL(/.*canvas/);
 	});
 
