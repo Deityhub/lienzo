@@ -132,18 +132,51 @@ export function resizeRect(
 	return { x, y, width, height };
 }
 
-/** The preview rectangle shown while dragging a new element over the page, anchored at `pointer`. */
-export function dragPreviewRect(pointer: Point, boundaries: RulerBoundaries): Rect {
+/** Default size of a new element dropped at `point`: to the right boundary, at most 500px tall, at least 100x50. */
+function newElementSize(point: Point, boundaries: RulerBoundaries): Size {
 	const { horizontal, vertical } = boundaries;
 	const MIN_WIDTH = 100;
 	const MIN_HEIGHT = 50;
 	const MAX_HEIGHT = 500;
 
-	let width = horizontal.end - pointer.x;
-	let height = Math.min(MAX_HEIGHT, vertical.end - pointer.y);
+	let width = horizontal.end - point.x;
+	let height = Math.min(MAX_HEIGHT, vertical.end - point.y);
 	if (width < MIN_WIDTH) width = Math.min(MIN_WIDTH, horizontal.end - horizontal.start);
 	if (height < MIN_HEIGHT) height = Math.min(MIN_HEIGHT, vertical.end - vertical.start);
+	return { width, height };
+}
 
-	const { x, y } = clampPosition(pointer, { width, height }, boundaries);
-	return { x, y, width, height };
+/** The preview rectangle shown while dragging a new element over the page, anchored at `pointer`. */
+export function dragPreviewRect(pointer: Point, boundaries: RulerBoundaries): Rect {
+	const size = newElementSize(pointer, boundaries);
+	return { ...clampPosition(pointer, size, boundaries), ...size };
+}
+
+/**
+ * Where and how big a new element is when dropped at `point`: the default size, snapped to
+ * the boundaries (snapping to the left edge makes it full width), kept inside them, and
+ * parented to the topmost existing element under it.
+ */
+export function newElementPlacement(
+	point: Point,
+	boundaries: RulerBoundaries,
+	elements: TCanvasElement[]
+): Rect & { parentElementId: string | null } {
+	const { horizontal, vertical } = boundaries;
+	const size = newElementSize(point, boundaries);
+	let { width } = size;
+	const { height } = size;
+	let { x, y } = point;
+
+	if (Math.abs(x - horizontal.start) < SNAP_THRESHOLD) {
+		x = horizontal.start;
+		width = horizontal.end - horizontal.start;
+	}
+	if (Math.abs(x - horizontal.end) < SNAP_THRESHOLD) x = horizontal.end - width;
+	if (Math.abs(y - vertical.start) < SNAP_THRESHOLD) y = vertical.start;
+	if (Math.abs(y - vertical.end) < SNAP_THRESHOLD) y = vertical.end - height;
+
+	const position = clampPosition({ x, y }, { width, height }, boundaries);
+	const parent = findElementAt(elements, position);
+	return { ...position, width, height, parentElementId: parent ? parent.id : null };
 }
