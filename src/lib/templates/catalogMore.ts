@@ -22,7 +22,7 @@ const agenda: Template = {
 	category: 'Business',
 	accent: '#0f6cbd',
 	elements: [
-		rect(M, 56, 6, 76, '#0f6cbd'),
+		rect(M, 56, 8, 76, '#0f6cbd'),
 		text(M + 22, 52, W - 22, 'Team meeting', { size: 34, weight: '700' }),
 		text(M + 22, 100, W - 22, 'Thursday, March 5  ·  10:00 – 11:00  ·  Room 3 or video call', {
 			size: 13,
@@ -173,8 +173,8 @@ const proposal: Template = {
 	accent: '#0f6cbd',
 	elements: [
 		rect(0, 0, PAGE_W, PAGE_H, '#0b3a66'),
-		ellipse(420, 560, 640, 640, '#0f6cbd', { opacity: 0.55 }),
-		ellipse(560, 760, 360, 360, '#2b88d8', { opacity: 0.6 }),
+		ellipse(330, 520, 520, 520, '#0f6cbd', { opacity: 0.55 }),
+		ellipse(470, 700, 300, 300, '#2b88d8', { opacity: 0.6 }),
 		text(M, 70, W, 'Northwind Studio', { size: 16, weight: '600', color: '#cfe4f7' }),
 		text(M, 340, 640, 'Website redesign\nproposal', {
 			size: 62,
@@ -182,7 +182,7 @@ const proposal: Template = {
 			color: '#ffffff',
 			lines: 2
 		}),
-		rect(M, 520, 90, 5, '#ffffff'),
+		line(M, 522, 90, '#ffffff', 5),
 		text(M, 550, 560, 'Prepared for Fabrikam Ltd\nMarch 2026', {
 			size: 18,
 			color: '#cfe4f7',
@@ -215,7 +215,7 @@ const saveTheDate: Template = {
 			color: '#3b1f27',
 			lines: 3
 		}),
-		rect(PAGE_W / 2 - 50, 650, 100, 2, '#b4546b'),
+		line(PAGE_W / 2 - 50, 651, 100, '#b4546b', 2),
 		text(M, 690, W, 'September 12, 2026', { size: 26, align: 'center', font: 'Playfair Display' }),
 		text(M, 740, W, 'Villa Rosa, Tuscany', { size: 15, color: muted, align: 'center' }),
 		text(M, 960, W, 'Invitation to follow', {
@@ -447,8 +447,8 @@ const thankYou: Template = {
 	accent: '#107c10',
 	elements: [
 		rect(0, 0, PAGE_W, PAGE_H, '#f3faf2'),
-		ellipse(-140, -140, 420, 420, '#107c10', { opacity: 0.16 }),
-		ellipse(PAGE_W - 280, PAGE_H - 280, 520, 520, '#107c10', { opacity: 0.16 }),
+		ellipse(40, 40, 260, 260, '#107c10', { opacity: 0.16 }),
+		ellipse(PAGE_W - 300, PAGE_H - 300, 260, 260, '#107c10', { opacity: 0.16 }),
 		text(M, 300, W, 'Thank you', {
 			size: 84,
 			align: 'center',
@@ -456,7 +456,7 @@ const thankYou: Template = {
 			font: 'Playfair Display',
 			color: '#0b5a08'
 		}),
-		rect(PAGE_W / 2 - 40, 450, 80, 3, '#107c10'),
+		line(PAGE_W / 2 - 40, 451, 80, '#107c10', 3),
 		text(
 			M + 80,
 			500,

@@ -1,4 +1,5 @@
-import { DISPLAY_SCALE } from '../const/dimension';
+import { CANVAS_HEIGHT, DISPLAY_SCALE } from '../const/dimension';
+import { MIN_ELEMENT_SIZE } from '../utils/geometry';
 import type { TemplateElement } from './types';
 
 /**
@@ -6,8 +7,9 @@ import type { TemplateElement } from './types';
  * so a 16 px font here is a 16 px font in the editor. Everything is converted to page units.
  */
 export const PAGE_W = 868;
-export const PAGE_H = 1228;
+export const PAGE_H = CANVAS_HEIGHT * DISPLAY_SCALE;
 const u = (px: number) => Math.round(px / DISPLAY_SCALE);
+const MIN_BOX = MIN_ELEMENT_SIZE;
 
 /** Side margin, and the width between the margins */
 export const MARGIN = 56;
@@ -76,7 +78,7 @@ interface BoxOptions {
 }
 
 function shape(
-	shapeType: 'rectangle' | 'ellipse',
+	shapeType: 'rectangle' | 'ellipse' | 'line-horizontal',
 	x: number,
 	y: number,
 	w: number,
@@ -108,9 +110,24 @@ export const rect = (x: number, y: number, w: number, h: number, fill: string, o
 export const ellipse = (x: number, y: number, w: number, h: number, fill: string, o?: BoxOptions) =>
 	shape('ellipse', x, y, w, h, fill, o);
 
-/** A horizontal rule: a thin filled bar, because a line shape is drawn smaller than its box when it is this thin */
-export const line = (x: number, y: number, w: number, color = rule, thickness = 1) =>
-	rect(x, y, w, thickness, color);
+/**
+ * A horizontal rule. It is a line shape in a box of the editor's minimum height (20 page units), centred on `y`,
+ * because the editor makes every element at least that tall and would stretch a thinner box.
+ */
+export const line = (
+	x: number,
+	y: number,
+	w: number,
+	color = rule,
+	thickness = 1
+): TemplateElement => ({
+	...shape('line-horizontal', x, y, w, 0, color, {
+		outline: color,
+		lineWidth: thickness
+	}),
+	y: u(y) - MIN_BOX / 2,
+	height: MIN_BOX
+});
 
 /** Rows of text at an even step, e.g. the lines of an invoice */
 export const rows = (
