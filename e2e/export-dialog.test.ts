@@ -136,11 +136,13 @@ test.describe('Editor header', () => {
 
 	test('a new document is called Untitled document until it is named', async ({ page }) => {
 		await page.goto('/canvas');
+		await page.waitForLoadState('networkidle'); // clicks only work once the page is interactive
 		await expect(page.getByTestId('document-title')).toHaveText('Untitled document');
 	});
 
 	test('the select-multiple switch reports whether it is on', async ({ page }) => {
 		await page.goto('/canvas');
+		await page.waitForLoadState('networkidle'); // clicks only work once the page is interactive
 		const toggle = page.getByTestId('multi-select-toggle');
 		await expect(toggle).toHaveAttribute('aria-pressed', 'false');
 		await toggle.click();
