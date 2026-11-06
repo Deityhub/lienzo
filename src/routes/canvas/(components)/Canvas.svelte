@@ -3,21 +3,16 @@
 	import CanvasElement from './CanvasElement.svelte';
 	import Ruler from './Ruler.svelte';
 	import { appStore } from '$lib/stores/appStore.svelte.ts';
-	import type {
-		TCanvasElement,
-		DocumentPage,
-		ResizeDirection,
-		TCanvasInstance
-	} from '$lib/types/canvas';
+	import type { DocumentPage, TCanvasInstance } from '$lib/types/canvas';
 	import { pixelsToPercent } from '$lib/utils';
 	import {
 		constrainToBoundaries,
-		dragPosition,
 		dragPreviewRect,
 		findElementAt,
-		getOverlappingElements,
-		resizeRect
+		getOverlappingElements
 	} from '$lib/utils/geometry';
+	import { createElementDrag } from '$lib/canvas/elementDrag.svelte';
+	import { createElementResize } from '$lib/canvas/elementResize.svelte';
 
 	const selectedElement = $derived(appStore.getSelectedElement());
 	const scale = $derived(appStore.getScale());
@@ -57,17 +52,6 @@
 		}
 	});
 
-	let dragRafId: number | null = null;
-	let lastPointer = { x: 0, y: 0 };
-	let dragMeta: {
-		id: string;
-		pageId: string;
-		startX: number;
-		startY: number;
-		width: number;
-		height: number;
-	} | null = null;
-
 	// Drag preview and highlighting states
 	let dragPreview = $state<{ x: number; y: number; width: number; height: number } | null>(null);
 	let hoveredElementId = $state<string | null>(null);
@@ -75,9 +59,17 @@
 
 	let canvasRef: HTMLDivElement;
 	let canvasPageRef: HTMLDivElement;
-	let isDragging = $state(false);
-	let dragStart = $state({ x: 0, y: 0 });
-	let isResizing = $state(false);
+
+	const pointerOptions = {
+		getCanvas: () => canvasRef,
+		getPage: () => page,
+		getSize: () => ({ width, height })
+	};
+	const drag = createElementDrag({
+		...pointerOptions,
+		onHover: (elementId) => (hoveredElementId = elementId)
+	});
+	const resize = createElementResize(pointerOptions);
 
 	// Update highlighted elements when selection changes
 	$effect(() => {
@@ -145,297 +137,6 @@
 
 	function handleCanvasDragOver(event: DragEvent) {
 		onDragover(event);
-	}
-
-	// Track current drag using dragMeta alone (no separate flag/id var)
-
-	function handleGlobalPointerUp() {
-		if (!isDragging || !dragMeta) {
-			return;
-		}
-
-		// Lookup the latest element state from store to finalize and reparent
-		const latest = appStore.findElement(dragMeta.pageId, dragMeta.id);
-		if (latest) {
-			const newParentElement = findElementAt(
-				Object.values(page.elements),
-				{ x: latest.x + latest.width / 2, y: latest.y + latest.height / 2 },
-				latest.id
-			);
-			const newParentId = newParentElement ? newParentElement.id : null;
-
-			appStore.moveElement({
-				pageId: latest.pageId,
-				elementId: latest.id,
-				newParentId,
-				newX: latest.x,
-				newY: latest.y
-			});
-
-			const updated = appStore.findElement(latest.pageId, latest.id);
-			if (updated) {
-				appStore.selectElement(updated);
-			}
-		}
-
-		// Cleanup
-		isDragging = false;
-		hoveredElementId = null;
-		dragMeta = null;
-		if (dragRafId !== null) {
-			cancelAnimationFrame(dragRafId);
-			dragRafId = null;
-		}
-		document.removeEventListener('pointermove', handleGlobalPointerMove);
-		document.removeEventListener('pointerup', handleGlobalPointerUp, true);
-		document.removeEventListener('touchmove', handleTouchMove);
-		document.removeEventListener('touchend', handleGlobalPointerUp, true);
-		document.removeEventListener('touchcancel', handleGlobalPointerUp, true);
-		document.body.style.userSelect = '';
-		document.body.style.touchAction = '';
-	}
-
-	function cancelDrag() {
-		// Abort drag without finalizing reparenting
-		isDragging = false;
-		hoveredElementId = null;
-		dragMeta = null;
-		if (dragRafId !== null) {
-			cancelAnimationFrame(dragRafId);
-			dragRafId = null;
-		}
-		document.removeEventListener('pointermove', handleGlobalPointerMove);
-		document.removeEventListener('pointerup', handleGlobalPointerUp, true);
-		document.removeEventListener('touchmove', handleTouchMove);
-		document.removeEventListener('touchend', handleGlobalPointerUp, true);
-		document.removeEventListener('touchcancel', handleGlobalPointerUp, true);
-		document.body.style.userSelect = '';
-		document.body.style.touchAction = '';
-	}
-
-	function startElementDrag(event: PointerEvent | TouchEvent, element: TCanvasElement) {
-		event.stopPropagation();
-
-		// Start global, rAF-throttled drag
-		isDragging = true;
-
-		// Handle both pointer and touch events
-		const startX = 'touches' in event ? event.touches[0].clientX : event.clientX;
-		const startY = 'touches' in event ? event.touches[0].clientY : event.clientY;
-
-		dragStart = { x: startX, y: startY };
-		dragMeta = {
-			id: element.id,
-			pageId: element.pageId,
-			startX: element.x,
-			startY: element.y,
-			width: element.width,
-			height: element.height
-		};
-		lastPointer = { x: startX, y: startY };
-
-		// Add both pointer and touch event listeners
-		document.addEventListener('pointermove', handleGlobalPointerMove);
-		document.addEventListener('pointerup', handleGlobalPointerUp, true);
-		document.addEventListener('touchmove', handleTouchMove, {
-			passive: false
-		} as AddEventListenerOptions);
-		document.addEventListener('touchend', handleGlobalPointerUp, true);
-		document.addEventListener('touchcancel', handleGlobalPointerUp, true); // Add touchcancel
-		document.body.style.userSelect = 'none';
-		document.body.style.touchAction = 'none';
-	}
-
-	// Move the dragged element to the latest pointer position, at most once per animation frame
-	function scheduleDragUpdate() {
-		if (dragRafId !== null) return;
-		dragRafId = requestAnimationFrame(() => {
-			dragRafId = null;
-			if (!isDragging || !dragMeta) return;
-
-			const rect = canvasRef.getBoundingClientRect();
-			const delta = {
-				x: (lastPointer.x - dragStart.x) * (width / rect.width),
-				y: (lastPointer.y - dragStart.y) * (height / rect.height)
-			};
-			const size = { width: dragMeta.width, height: dragMeta.height };
-			const position = dragPosition(
-				{ x: dragMeta.startX, y: dragMeta.startY },
-				delta,
-				size,
-				page.boundaries
-			);
-
-			// The element under the dragged element's center is the future parent
-			const parent = findElementAt(
-				Object.values(page.elements),
-				{ x: position.x + size.width / 2, y: position.y + size.height / 2 },
-				dragMeta.id
-			);
-			hoveredElementId = parent ? parent.id : null;
-
-			appStore.updateElement({
-				elementId: dragMeta.id,
-				updates: position,
-				pageId: dragMeta.pageId
-			});
-		});
-	}
-
-	function handleTouchMove(e: TouchEvent) {
-		if (!isDragging || !dragMeta) return;
-		lastPointer = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-		scheduleDragUpdate();
-	}
-
-	function handleGlobalPointerMove(e: PointerEvent) {
-		lastPointer = { x: e.clientX, y: e.clientY };
-		scheduleDragUpdate();
-	}
-
-	function handleElementResizeAnimationFrame({
-		element,
-		direction,
-		startState,
-		startX,
-		startY,
-		scaleX,
-		scaleY,
-		last
-	}: {
-		element: TCanvasElement;
-		direction: ResizeDirection;
-		startState: { x: number; y: number; w: number; h: number };
-		startX: number;
-		startY: number;
-		scaleX: number;
-		scaleY: number;
-		last: { x: number; y: number };
-	}) {
-		return requestAnimationFrame(() => {
-			const next = resizeRect(
-				{ x: startState.x, y: startState.y, width: startState.w, height: startState.h },
-				direction,
-				{ x: (last.x - startX) * scaleX, y: (last.y - startY) * scaleY },
-				page.boundaries
-			);
-
-			appStore.updateElement({
-				elementId: element.id,
-				updates: next,
-				pageId: element.pageId
-			});
-		});
-	}
-
-	function handleElementResize(
-		event: MouseEvent | PointerEvent | TouchEvent,
-		element: TCanvasElement,
-		direction: ResizeDirection
-	) {
-		event.stopPropagation();
-		isResizing = true;
-		const originalUserSelect = document.body.style.userSelect;
-		const originalTouchAction = document.body.style.touchAction;
-		document.body.style.userSelect = '';
-		document.body.style.touchAction = 'none'; // Prevent touch scrolling during resize
-
-		const rect = canvasRef.getBoundingClientRect();
-		const scaleX = width / rect.width;
-		const scaleY = height / rect.height;
-
-		// Handle both mouse/pointer and touch events
-		const startX = 'touches' in event ? event.touches[0].clientX : event.clientX;
-		const startY = 'touches' in event ? event.touches[0].clientY : event.clientY;
-
-		const startState = {
-			x: element.x,
-			y: element.y,
-			w: element.width,
-			h: element.height
-		};
-
-		let resizeRafId: number | null = null;
-		let last = { x: startX, y: startY };
-		let lastUpdateTime = 0;
-		const UPDATE_THROTTLE = 16; // ~60fps for smoother mobile performance
-
-		const onPointerMove = (e: PointerEvent) => {
-			last = { x: e.clientX, y: e.clientY };
-
-			// Throttle updates for better mobile performance
-			const now = performance.now();
-			if (now - lastUpdateTime < UPDATE_THROTTLE && resizeRafId !== null) {
-				return;
-			}
-
-			lastUpdateTime = now;
-
-			if (resizeRafId === null) {
-				resizeRafId = handleElementResizeAnimationFrame({
-					element,
-					direction,
-					startState,
-					startX,
-					startY,
-					scaleX,
-					scaleY,
-					last
-				});
-
-				resizeRafId = null;
-			}
-		};
-
-		const onTouchMove = (e: TouchEvent) => {
-			const touch = e.touches[0];
-			last = { x: touch.clientX, y: touch.clientY };
-
-			// Throttle updates for better mobile performance
-			const now = performance.now();
-			if (now - lastUpdateTime < UPDATE_THROTTLE && resizeRafId !== null) {
-				return;
-			}
-
-			lastUpdateTime = now;
-
-			if (resizeRafId === null) {
-				resizeRafId = handleElementResizeAnimationFrame({
-					element,
-					direction,
-					startState,
-					startX,
-					startY,
-					scaleX,
-					scaleY,
-					last
-				});
-
-				resizeRafId = null;
-			}
-		};
-
-		const option: AddEventListenerOptions = { passive: false };
-
-		const onPointerUp = () => {
-			isResizing = false;
-			if (resizeRafId !== null) {
-				cancelAnimationFrame(resizeRafId);
-				resizeRafId = null;
-			}
-			document.removeEventListener('pointermove', onPointerMove);
-			document.removeEventListener('pointerup', onPointerUp, true);
-			document.removeEventListener('touchmove', onTouchMove, option);
-			document.removeEventListener('touchend', onPointerUp, true);
-			document.body.style.userSelect = originalUserSelect; // Restore original user select
-			document.body.style.touchAction = originalTouchAction; // Restore original touch action
-		};
-
-		// Add both pointer and touch event listeners for better mobile support
-		document.addEventListener('pointermove', onPointerMove);
-		document.addEventListener('pointerup', onPointerUp, true);
-		document.addEventListener('touchmove', onTouchMove, option);
-		document.addEventListener('touchend', onPointerUp, true);
 	}
 
 	// Exposed methods for drag preview
@@ -524,7 +225,7 @@
 				onkeydown={(e) => {
 					if (e.key === 'Escape') {
 						clearDragPreview();
-						cancelDrag();
+						drag.cancel();
 					}
 				}}
 				ondragover={handleCanvasDragOver}
@@ -568,24 +269,20 @@
 							: ''} {isHovered ? 'ring-primary' : ''} {isHighlighted && !isSelected
 							? 'ring-primary/30'
 							: ''}"
-						class:transition-none={isDragging || isResizing}
+						class:transition-none={drag.isDragging || resize.isResizing}
 						style:left={pixelsToPercent(element.x, width)}
 						style:top={pixelsToPercent(element.y, height)}
 						style:width={pixelsToPercent(element.width, width)}
 						style:height={pixelsToPercent(element.height, height)}
 						style:z-index={element.zIndex}
 						style:touch-action="none"
-						onpointerdown={(e) => {
-							startElementDrag(e, element);
-						}}
-						ontouchstart={(e) => {
-							startElementDrag(e, element);
-						}}
+						onpointerdown={(e) => drag.start(e, element)}
+						ontouchstart={(e) => drag.start(e, element)}
 					>
 						<CanvasElement
 							{element}
 							{isSelected}
-							onResize={(event, direction) => handleElementResize(event, element, direction)}
+							onResize={(event, direction) => resize.start(event, element, direction)}
 						/>
 					</div>
 				{/each}
