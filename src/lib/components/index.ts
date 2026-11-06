@@ -8,3 +8,4 @@ export { default as Select } from './Select.svelte';
 export { default as Input } from './Input.svelte';
 export { default as ColorInput } from './ColorInput.svelte';
 export { default as Seo } from './Seo.svelte';
+export { default as RangeInput } from './RangeInput.svelte';
