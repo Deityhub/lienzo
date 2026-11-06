@@ -64,7 +64,7 @@
 	<!-- One panel for one or several selected elements, so it does not slide out and in when the selection changes -->
 	<div
 		transition:slide={{ duration: 300, axis: 'x' }}
-		class="w-80 overflow-y-auto border-l border-border bg-background px-5 pb-2 max-lg:absolute max-lg:bottom-0 max-lg:left-0 max-lg:z-9999 max-lg:max-h-[55vh] max-lg:w-full max-lg:rounded-t-xl max-lg:border-t max-lg:border-l-0 max-lg:px-4 max-lg:shadow-[0_-8px_24px_rgba(0,0,0,0.18)] lg:pt-30"
+		class="w-80 overflow-y-auto border-l border-border bg-background px-5 pb-2 max-lg:absolute max-lg:bottom-0 max-lg:left-0 max-lg:z-9999 max-lg:max-h-[55vh] max-lg:w-full max-lg:rounded-t-xl max-lg:border-t max-lg:border-l-0 max-lg:px-4 max-lg:shadow-[0_-8px_24px_rgba(0,0,0,0.18)] max-md:bottom-16 lg:pt-30"
 		data-testid="property-panel"
 	>
 		{#if selectedElement}
