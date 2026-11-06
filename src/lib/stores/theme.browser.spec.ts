@@ -48,6 +48,15 @@ describe('theme', () => {
 		stop();
 	});
 
+	it('system forgets the saved choice and follows the device', () => {
+		theme.set('dark');
+		theme.set('system');
+
+		expect(theme.preference).toBe('system');
+		expect(localStorage.getItem(THEME_KEY)).toBeNull();
+		expect(['light', 'dark']).toContain(theme.current);
+	});
+
 	it('init ignores a saved value it does not know', () => {
 		localStorage.setItem(THEME_KEY, 'sepia');
 		const stop = theme.init();

@@ -1,6 +1,8 @@
 import { browser } from '$app/environment';
 
 export type Theme = 'light' | 'dark';
+/** What the user picked: a theme, or to follow the system */
+export type ThemePreference = Theme | 'system';
 
 export const THEME_KEY = 'lienzo-theme';
 /** The colour of the browser's own chrome (address bar on phones) for each theme */
@@ -29,6 +31,7 @@ function apply(theme: Theme) {
 }
 
 // app.html already applied the right theme before the first paint: start from what is on the page
+let preference = $state<ThemePreference>('system');
 let current = $state<Theme>(
 	browser && document.documentElement.classList.contains('dark') ? 'dark' : 'light'
 );
@@ -45,12 +48,19 @@ export const theme = {
 		return current === 'dark';
 	},
 
-	/** Choose a theme and remember it. */
-	set(next: Theme) {
-		current = next;
-		apply(next);
+	/** The user's choice: light, dark, or system (follow the device) */
+	get preference() {
+		return preference;
+	},
+
+	/** Choose a theme (or 'system') and remember it. */
+	set(next: ThemePreference) {
+		preference = next;
+		current = next === 'system' ? systemTheme() : next;
+		apply(current);
 		try {
-			localStorage.setItem(THEME_KEY, next);
+			if (next === 'system') localStorage.removeItem(THEME_KEY);
+			else localStorage.setItem(THEME_KEY, next);
 		} catch {
 			// not remembered, but it still applies for this visit
 		}
@@ -62,12 +72,14 @@ export const theme = {
 
 	/** Call once in the browser: sync with the page and follow the system until a choice is saved. Returns a stop function. */
 	init() {
-		current = stored() ?? systemTheme();
+		const saved = stored();
+		preference = saved ?? 'system';
+		current = saved ?? systemTheme();
 		apply(current);
 
 		const query = window.matchMedia('(prefers-color-scheme: dark)');
 		const follow = () => {
-			if (stored()) return; // the user chose
+			if (preference !== 'system') return; // the user chose
 			current = systemTheme();
 			apply(current);
 		};
