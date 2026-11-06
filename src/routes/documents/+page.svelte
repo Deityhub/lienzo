@@ -8,7 +8,7 @@
 	import { appStore } from '$lib/stores/appStore.svelte.ts';
 	import Document from './(components)/Document.svelte';
 	import { Icons } from '$lib/icons';
-	import { Download, Upload } from '@lucide/svelte';
+	import { Download, Plus, Search, Upload } from '@lucide/svelte';
 	import {
 		exportAllDocuments,
 		FILE_EXTENSION,
@@ -121,63 +121,69 @@
 <Seo title="My Documents – Lienzo" path="/documents" noindex />
 
 <div class="min-h-screen">
-	<!-- Header -->
-	<header class="border-b border-primary/10 bg-background/80 backdrop-blur-md">
-		<div class="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
-			<div class="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
-				<div class="flex items-center space-x-4">
-					<Button onClick={() => goto(resolve('/'))} variant="text" size="xs" className="-ml-2">
-						<div class="flex items-center gap-3">
-							<div class="flex h-8 w-8 items-center justify-center">
-								<Icons.Logo />
-							</div>
-							<span class="text-xl font-semibold tracking-tight text-foreground">Lienzo</span>
-						</div>
+	<!-- Header: one row on a tablet or desktop; on a phone the name and main action on top, search and file actions below -->
+	<header class="border-b border-border bg-background/80 backdrop-blur-md">
+		<div class="mx-auto max-w-7xl px-4 py-3 sm:px-6 lg:px-8">
+			<div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
+				<a
+					href={resolve('/')}
+					aria-label="Lienzo home"
+					class="order-1 flex items-center gap-2.5 rounded focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+				>
+					<Icons.Logo />
+					<span class="text-xl font-semibold tracking-tight text-foreground">Lienzo</span>
+				</a>
+
+				<div class="order-2 flex items-center gap-2 md:order-3">
+					<Button
+						onClick={handleCreateNew}
+						variant="primary"
+						className="whitespace-nowrap max-sm:min-h-11"
+						data-testid="new-document-btn"
+					>
+						<Plus class="mr-1.5 h-4 w-4" aria-hidden="true" />
+						New Document
 					</Button>
-				</div>
-				<div class="flex w-full items-center gap-4 sm:w-auto">
 					<ThemeToggle />
-					<div class="relative flex-1 sm:w-64">
-						<div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-							<svg
-								class="h-5 w-5 text-muted-foreground"
-								xmlns="http://www.w3.org/2000/svg"
-								viewBox="0 0 20 20"
-								fill="currentColor"
-							>
-								<path
-									fill-rule="evenodd"
-									d="M9 3.5a5.5 5.5 0 100 11 5.5 5.5 0 000-11zM2 9a7 7 0 1112.452 4.391l3.328 3.329a.75.75 0 11-1.06 1.06l-3.329-3.328A7 7 0 012 9z"
-									clip-rule="evenodd"
-								/>
-							</svg>
-						</div>
+				</div>
+
+				<div
+					class="order-3 flex w-full items-center gap-2 md:order-2 md:w-auto md:flex-1 md:justify-end"
+				>
+					<div class="relative min-w-0 flex-1 md:max-w-64">
+						<Search
+							class="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+							aria-hidden="true"
+						/>
+						<label for="search-documents" class="sr-only">Search documents</label>
 						<input
-							type="text"
+							id="search-documents"
+							type="search"
 							bind:value={searchQuery}
 							placeholder="Search documents..."
-							class="block w-full rounded-md border-0 bg-background py-1.5 pr-3 pl-10 text-foreground ring-1 ring-ring ring-inset placeholder:text-muted-foreground/60 focus:ring-ring/20 focus:ring-inset sm:text-sm sm:leading-6"
+							class="block h-9 w-full rounded border border-input bg-background pr-3 pl-9 text-sm text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-ring focus:outline-none max-sm:h-11"
 						/>
 					</div>
+					<!-- Icon only on a phone, with the name spoken -->
 					<Button
 						onClick={() => fileInput?.click()}
 						variant="secondary"
-						className="whitespace-nowrap"
+						className="whitespace-nowrap max-sm:min-h-11 max-sm:min-w-11"
 						disabled={importing}
 						data-testid="import-btn"
 					>
-						<Upload class="mr-2 h-4 w-4" />
-						Import
+						<Upload class="h-4 w-4 sm:mr-2" aria-hidden="true" />
+						<span class="max-sm:sr-only">Import</span>
 					</Button>
 					<Button
 						onClick={() => exportAllDocuments(documents)}
 						variant="secondary"
-						className="whitespace-nowrap"
+						className="whitespace-nowrap max-sm:min-h-11 max-sm:min-w-11"
 						disabled={documents.length === 0}
 						data-testid="export-all-btn"
 					>
-						<Download class="mr-2 h-4 w-4" />
-						Export all
+						<Download class="h-4 w-4 sm:mr-2" aria-hidden="true" />
+						<span class="max-sm:sr-only">Export all</span>
 					</Button>
 					<input
 						bind:this={fileInput}
@@ -189,21 +195,6 @@
 						data-testid="import-input"
 						aria-label="Import documents from a file"
 					/>
-					<Button onClick={handleCreateNew} variant="primary" className="whitespace-nowrap">
-						<svg
-							xmlns="http://www.w3.org/2000/svg"
-							class="mr-2 h-4 w-4"
-							viewBox="0 0 20 20"
-							fill="currentColor"
-						>
-							<path
-								fill-rule="evenodd"
-								d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"
-								clip-rule="evenodd"
-							/>
-						</svg>
-						New Document
-					</Button>
 				</div>
 			</div>
 		</div>

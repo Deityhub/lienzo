@@ -9,13 +9,17 @@
 		ChevronLeft,
 		ClipboardPaste,
 		Download,
+		Ellipsis,
 		LoaderCircle,
+		Moon,
 		Plus,
 		Save,
+		Sun,
 		TriangleAlert,
 		Upload
 	} from '@lucide/svelte';
 	import { clipboard } from '$lib/canvas/clipboard.svelte';
+	import { theme } from '$lib/stores/theme.svelte';
 	import type { SaveStatus } from '$lib/canvas/autosave.svelte';
 
 	interface Props {
@@ -52,6 +56,19 @@
 
 	let importInput: HTMLInputElement | undefined = $state();
 
+	// On a phone the less used actions are in a menu
+	let menuOpen = $state(false);
+	let menuRoot: HTMLElement | undefined = $state();
+
+	function closeMenuOutside(event: PointerEvent) {
+		if (menuOpen && menuRoot && !menuRoot.contains(event.target as Node)) menuOpen = false;
+	}
+
+	function runFromMenu(action: () => void) {
+		menuOpen = false;
+		action();
+	}
+
 	function handleImportChange(event: Event) {
 		const input = event.currentTarget as HTMLInputElement;
 		const file = input.files?.[0];
@@ -63,7 +80,7 @@
 <header
 	class="absolute top-0 z-9999 w-full border-b border-border bg-background/90 px-4 py-3 backdrop-blur-md"
 >
-	<div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+	<div class="flex items-center justify-between gap-x-4 gap-y-2">
 		<!-- where you are: back, the document, and how it is saved -->
 		<div class="flex min-w-0 items-center gap-3">
 			<Button onClick={onBack} variant="ghost" data-testid="back-btn" className="-ml-1 pl-2!">
@@ -117,15 +134,17 @@
 		</div>
 
 		<!-- what you can do -->
-		<div class="flex flex-wrap items-center gap-2">
+		<div class="hidden flex-none items-center gap-2 md:flex">
 			<Button
 				disabled={busy}
 				onClick={appStore.addPage}
 				variant="secondary"
+				className="max-xl:w-9 max-xl:px-0"
+				title="Add page"
 				data-testid="add-page-btn"
 			>
-				<Plus class="mr-1.5 h-4 w-4" aria-hidden="true" />
-				Add page
+				<Plus class="h-4 w-4 xl:mr-1.5" aria-hidden="true" />
+				<span class="max-xl:sr-only">Add page</span>
 			</Button>
 			<!-- Clicking it must not clear the selection -->
 			<span data-keep-selection>
@@ -133,28 +152,38 @@
 					onClick={() => appStore.setMultiSelectMode(!multiSelectMode)}
 					variant="secondary"
 					aria-pressed={multiSelectMode}
+					className="max-xl:w-9 max-xl:px-0"
+					title="Select multiple"
 					data-testid="multi-select-toggle"
 				>
-					<BoxSelect class="mr-1.5 h-4 w-4" aria-hidden="true" />
-					Select multiple
+					<BoxSelect class="h-4 w-4 xl:mr-1.5" aria-hidden="true" />
+					<span class="max-xl:sr-only">Select multiple</span>
 				</Button>
 			</span>
 			<!-- Pastes onto the page last clicked; clicking it must not clear the selection -->
 			<span data-keep-selection>
-				<Button onClick={() => clipboard.paste()} variant="secondary" data-testid="paste-btn">
-					<ClipboardPaste class="mr-1.5 h-4 w-4" aria-hidden="true" />
-					Paste
+				<Button
+					onClick={() => clipboard.paste()}
+					variant="secondary"
+					className="max-xl:w-9 max-xl:px-0"
+					title="Paste"
+					data-testid="paste-btn"
+				>
+					<ClipboardPaste class="h-4 w-4 xl:mr-1.5" aria-hidden="true" />
+					<span class="max-xl:sr-only">Paste</span>
 				</Button>
 			</span>
-			<span class="mx-1 hidden h-6 w-px bg-border lg:block" aria-hidden="true"></span>
+			<span class="mx-1 hidden h-6 w-px bg-border xl:block" aria-hidden="true"></span>
 			<Button
 				disabled={busy}
 				onClick={() => importInput?.click()}
 				variant="secondary"
+				className="max-xl:w-9 max-xl:px-0"
+				title="Import"
 				data-testid="canvas-import-btn"
 			>
-				<Upload class="mr-1.5 h-4 w-4" aria-hidden="true" />
-				Import
+				<Upload class="h-4 w-4 xl:mr-1.5" aria-hidden="true" />
+				<span class="max-xl:sr-only">Import</span>
 			</Button>
 			<input
 				bind:this={importInput}
@@ -171,17 +200,106 @@
 					pending={busy}
 					onClick={onSave}
 					variant="secondary"
+					className="max-xl:w-9 max-xl:px-0"
+					title="Save"
 					data-testid="save-btn"
 				>
-					<Save class="mr-1.5 h-4 w-4" aria-hidden="true" />
-					Save
+					<Save class="h-4 w-4 xl:mr-1.5" aria-hidden="true" />
+					<span class="max-xl:sr-only">Save</span>
 				</Button>
 			{/if}
-			<Button disabled={busy} onClick={onExport} variant="primary" data-testid="export-btn">
-				<Download class="mr-1.5 h-4 w-4" aria-hidden="true" />
-				Export PDF
+			<Button
+				disabled={busy}
+				onClick={onExport}
+				variant="primary"
+				className="max-lg:w-9 max-lg:px-0"
+				title="Export PDF"
+				data-testid="export-btn"
+			>
+				<Download class="h-4 w-4 lg:mr-1.5" aria-hidden="true" />
+				<span class="max-lg:sr-only">Export PDF</span>
 			</Button>
 			<ThemeToggle />
 		</div>
+
+		<!-- On a phone: Export, and a menu for the rest (adding and selecting are in the bar below) -->
+		<div class="flex items-center gap-1 md:hidden" bind:this={menuRoot} data-keep-selection>
+			<Button disabled={busy} onClick={onExport} variant="primary" data-testid="export-btn-phone">
+				<Download class="mr-1.5 h-4 w-4" aria-hidden="true" />
+				Export
+			</Button>
+			<div class="relative">
+				<button
+					type="button"
+					aria-haspopup="menu"
+					aria-expanded={menuOpen}
+					aria-label="More actions"
+					data-testid="more-menu-btn"
+					onclick={() => (menuOpen = !menuOpen)}
+					class="inline-flex h-11 w-11 cursor-pointer items-center justify-center rounded text-foreground hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+				>
+					<Ellipsis class="h-5 w-5" aria-hidden="true" />
+				</button>
+				{#if menuOpen}
+					<div
+						role="menu"
+						aria-label="More actions"
+						class="absolute top-full right-0 z-50 mt-2 w-56 rounded-lg border border-border bg-popover p-1 text-popover-foreground shadow-lg"
+						data-testid="more-menu"
+					>
+						<button
+							type="button"
+							role="menuitem"
+							class="flex min-h-11 w-full cursor-pointer items-center gap-3 rounded px-3 text-left text-sm font-medium hover:bg-accent"
+							onclick={() => runFromMenu(() => clipboard.paste())}
+						>
+							<ClipboardPaste class="h-4 w-4" aria-hidden="true" /> Paste
+						</button>
+						<button
+							type="button"
+							role="menuitem"
+							disabled={busy}
+							class="flex min-h-11 w-full cursor-pointer items-center gap-3 rounded px-3 text-left text-sm font-medium hover:bg-accent disabled:opacity-50"
+							onclick={() => runFromMenu(() => importInput?.click())}
+						>
+							<Upload class="h-4 w-4" aria-hidden="true" /> Import
+						</button>
+						{#if canSave}
+							<button
+								type="button"
+								role="menuitem"
+								disabled={busy}
+								class="flex min-h-11 w-full cursor-pointer items-center gap-3 rounded px-3 text-left text-sm font-medium hover:bg-accent disabled:opacity-50"
+								onclick={() => runFromMenu(onSave)}
+							>
+								<Save class="h-4 w-4" aria-hidden="true" /> Save
+							</button>
+						{/if}
+						<div class="my-1 h-px bg-border" role="separator"></div>
+						<button
+							type="button"
+							role="menuitemcheckbox"
+							aria-checked={theme.isDark}
+							class="flex min-h-11 w-full cursor-pointer items-center gap-3 rounded px-3 text-left text-sm font-medium hover:bg-accent"
+							onclick={() => theme.toggle()}
+							data-testid="menu-theme"
+						>
+							{#if theme.isDark}
+								<Sun class="h-4 w-4" aria-hidden="true" /> Light theme
+							{:else}
+								<Moon class="h-4 w-4" aria-hidden="true" /> Dark theme
+							{/if}
+						</button>
+					</div>
+				{/if}
+			</div>
+		</div>
 	</div>
 </header>
+
+<svelte:window
+	onpointerdown={closeMenuOutside}
+	onkeydown={(event) => {
+		if (event.key === 'Escape') menuOpen = false;
+	}}
+/>

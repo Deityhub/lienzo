@@ -24,6 +24,7 @@
 		children?: Snippet;
 		'data-testid'?: string;
 		'aria-pressed'?: boolean;
+		title?: string;
 	};
 
 	const {
@@ -48,7 +49,7 @@
 		secondary:
 			'border border-input text-foreground hover:bg-accent aria-pressed:border-primary aria-pressed:bg-primary-light aria-pressed:text-primary-text',
 		'secondary-destructive':
-			'border-2 border-destructive text-destructive-text hover:bg-destructive/10',
+			'border border-destructive text-destructive-text hover:bg-destructive/10',
 		destructive: 'bg-destructive text-destructive-foreground hover:bg-destructive-dark',
 		ghost:
 			'text-foreground hover:bg-accent hover:text-accent-foreground border border-transparent hover:border-border',

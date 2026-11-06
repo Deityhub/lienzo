@@ -219,7 +219,7 @@ test.describe('Property panel on a phone', () => {
 		await expect(panel.getByRole('heading', { name: 'Font', exact: true })).toBeHidden();
 		const closed = (await panel.boundingBox())!;
 		expect(closed.height).toBeLessThan(120); // a strip, not a wall over the page
-		expect(closed.y + closed.height).toBeCloseTo(844, 0); // at the bottom edge
+		expect(closed.y + closed.height).toBeCloseTo(844 - 64, 0); // sits right above the 64px tool bar
 
 		await toggle.click();
 		await expect(toggle).toHaveAttribute('aria-expanded', 'true');
@@ -258,7 +258,7 @@ test.describe('Property panel on a phone', () => {
 	test('a selection of several elements gets the same sheet', async ({ page }) => {
 		await seedDocument(page, doc);
 		await page.getByRole('button', { name: 'Edit' }).click();
-		await page.getByTestId('multi-select-toggle').click();
+		await page.getByTestId('multi-select-bar-btn').click(); // the header has no room for it on a phone
 		const elements = page.locator('[data-testid="document-canvas"] > .cursor-move');
 		await elements.nth(0).click();
 		await elements.nth(1).click();
