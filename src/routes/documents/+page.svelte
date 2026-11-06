@@ -185,7 +185,7 @@
 					<input
 						bind:this={fileInput}
 						type="file"
-						accept={`${FILE_EXTENSION},.json,application/json`}
+						accept={`${FILE_EXTENSION},.json,application/json,.pdf,application/pdf`}
 						multiple
 						class="hidden"
 						onchange={handleImport}

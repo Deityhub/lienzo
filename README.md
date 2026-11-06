@@ -366,6 +366,8 @@ Documents are stored only in your browser (IndexedDB), so export them to keep a 
 - **Export all** downloads every document in one `lienzo-documents-<date>.lienzo.json` file.
 - **Import** reads one or more `.lienzo.json` files. New documents are added as they are. If a document with the same id is already in your library, you choose **Replace existing** (overwrites it) or **Keep both** (imports a separate copy, with `(imported)` appended to the name). Documents from older versions are upgraded automatically; invalid ones are skipped and listed.
 
+**PDFs exported from Lienzo can be imported too.** Every exported PDF has the editable document embedded inside it (as an attachment named `lienzo-document.json`), so the PDF you share is also a full backup. Choose it in either Import button, on the Documents page or in the editor. PDFs that were not exported from Lienzo contain no document data and cannot be imported. Import detects PDFs by content, so renaming the file does not matter.
+
 In the **editor**, the Import button loads a single-document file into the canvas, replacing its current content (you are asked first if the canvas is not empty). It is loaded as a new document, so saving it never overwrites an existing one.
 
 Image elements store a URL, so an imported document needs those images to still be reachable.

@@ -7,7 +7,9 @@ import {
 	saveImportedDocuments,
 	serializeDocuments
 } from './documentFile';
+import { buildPdf } from './pdfDocument';
 import { sampleDoc } from './testDocument';
+import { PDFDocument } from '@cantoo/pdf-lib';
 
 const file = (name: string, content: string) =>
 	new File([content], name, { type: 'application/json' });
@@ -46,6 +48,66 @@ describe('readDocumentFiles', () => {
 
 		expect(result.documents).toEqual([]);
 		expect(result.errors[0]).toMatch(/too large/);
+	});
+});
+
+const PNG = Uint8Array.from(
+	atob(
+		'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=='
+	),
+	(c) => c.charCodeAt(0)
+);
+const pdfFile = (name: string, bytes: Uint8Array) =>
+	new File([new Uint8Array(bytes)], name, { type: 'application/pdf' });
+
+describe('reading PDFs', () => {
+	it('reads the document embedded in a PDF exported from Lienzo', async () => {
+		const doc = sampleDoc('a', 'From PDF');
+		const bytes = await buildPdf(
+			[PNG],
+			{ widthMm: 210, heightMm: 297 },
+			serializeDocuments([doc]),
+			doc.name
+		);
+
+		const result = await readDocumentFiles([pdfFile('from-pdf.pdf', bytes)]);
+
+		expect(result.errors).toEqual([]);
+		expect(result.documents).toEqual([doc]);
+		expect(await readSingleDocument(pdfFile('from-pdf.pdf', bytes))).toEqual(doc);
+	});
+
+	it('explains that other PDFs cannot be imported', async () => {
+		const other = await PDFDocument.create();
+		other.addPage();
+
+		const result = await readDocumentFiles([pdfFile('other.pdf', await other.save())]);
+
+		expect(result.documents).toEqual([]);
+		expect(result.errors).toEqual([
+			'other.pdf – This PDF has no embedded Lienzo document. Only PDFs exported from Lienzo can be imported.'
+		]);
+	});
+
+	it('recognises a PDF by its content, whatever the file is called', async () => {
+		const doc = sampleDoc('a', 'Renamed');
+		const bytes = await buildPdf(
+			[PNG],
+			{ widthMm: 210, heightMm: 297 },
+			serializeDocuments([doc]),
+			doc.name
+		);
+
+		const result = await readDocumentFiles([new File([new Uint8Array(bytes)], 'no-extension')]);
+
+		expect(result.documents).toEqual([doc]);
+	});
+
+	it('reports a broken PDF', async () => {
+		const result = await readDocumentFiles([
+			pdfFile('broken.pdf', new TextEncoder().encode('%PDF-1.4 this is not a real pdf'))
+		]);
+		expect(result.errors).toEqual(['broken.pdf – This file could not be read as a PDF.']);
 	});
 });
 

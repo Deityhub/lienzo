@@ -1,6 +1,7 @@
 import type { DocumentData } from '../types/canvas';
 import { saveDocument } from '../stores/idb';
 import { migrateDocument } from '../stores/migrations';
+import { downloadBlob } from './download';
 import { uuidv4 } from './uuid';
 
 /** Version of the file envelope (not of the documents inside, which carry their own schemaVersion). */
@@ -8,6 +9,7 @@ const FORMAT_VERSION = 1;
 const APP_ID = 'lienzo';
 export const FILE_EXTENSION = '.lienzo.json';
 const MAX_FILE_BYTES = 25 * 1024 * 1024;
+const MAX_PDF_BYTES = 100 * 1024 * 1024;
 
 export interface DocumentFile {
 	app: typeof APP_ID;
@@ -88,15 +90,34 @@ export function findConflicts(documents: DocumentData[], existing: DocumentData[
 	});
 }
 
-/** Read and validate the files. Nothing is saved yet. */
+// By content, not by name: files get renamed and downloads can lose their extension
+const isPdf = async (file: File) => (await file.slice(0, 5).text()) === '%PDF-';
+
+/** A PDF exported from Lienzo carries the editable document inside it. */
+async function readPdfDocumentText(file: File): Promise<string> {
+	const { extractEmbeddedDocument } = await import('./pdfDocument'); // keep the PDF library out of the main bundle
+	const text = await extractEmbeddedDocument(new Uint8Array(await file.arrayBuffer()));
+	if (!text) {
+		throw new Error(
+			'This PDF has no embedded Lienzo document. Only PDFs exported from Lienzo can be imported.'
+		);
+	}
+	return text;
+}
+
+/** Read and validate the files (JSON or Lienzo-exported PDF). Nothing is saved yet. */
 export async function readDocumentFiles(files: File[]): Promise<ParsedFile> {
 	const documents: DocumentData[] = [];
 	const errors: string[] = [];
 
 	for (const file of files) {
 		try {
-			if (file.size > MAX_FILE_BYTES) throw new Error('The file is too large (max 25 MB).');
-			const parsed = parseDocumentFile(await file.text());
+			const pdf = await isPdf(file);
+			const limit = pdf ? MAX_PDF_BYTES : MAX_FILE_BYTES;
+			if (file.size > limit) {
+				throw new Error(`The file is too large (max ${limit / 1024 / 1024} MB).`);
+			}
+			const parsed = parseDocumentFile(pdf ? await readPdfDocumentText(file) : await file.text());
 			documents.push(...parsed.documents);
 			errors.push(...parsed.errors.map((message) => `${file.name} – ${message}`));
 		} catch (error) {
@@ -146,12 +167,7 @@ export async function saveImportedDocuments(
 }
 
 function downloadText(filename: string, text: string) {
-	const url = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
-	const link = document.createElement('a');
-	link.href = url;
-	link.download = filename;
-	link.click();
-	URL.revokeObjectURL(url);
+	downloadBlob(filename, new Blob([text], { type: 'application/json' }));
 }
 
 const slug = (name: string) =>

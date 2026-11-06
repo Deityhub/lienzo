@@ -350,7 +350,7 @@
 				<input
 					bind:this={importInput}
 					type="file"
-					accept=".lienzo.json,.json,application/json"
+					accept=".lienzo.json,.json,application/json,.pdf,application/pdf"
 					class="hidden"
 					onchange={handleImportFile}
 					data-testid="canvas-import-input"
