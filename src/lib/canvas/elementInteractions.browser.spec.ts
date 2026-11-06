@@ -4,6 +4,7 @@ import { appStore } from '../stores/appStore.svelte.ts';
 import type { ResizeDirection, TCanvasElement } from '../types/canvas';
 import { createElementDrag } from './elementDrag.svelte';
 import { createElementResize } from './elementResize.svelte';
+import { createMarquee } from './marquee.svelte';
 
 // The canvas is 1000x1000 screen pixels showing a 2000x2000 page: every screen pixel is 2 page pixels.
 const SIZE = { width: 2000, height: 2000 };
@@ -204,6 +205,73 @@ describe('createElementDrag', () => {
 
 		expect(drag.isDragging).toBe(false);
 	});
+
+	describe('with several elements selected', () => {
+		it('moves them all together by the same amount', async () => {
+			const a = addShape(300, 300, 100, 100);
+			const b = addShape(600, 500, 100, 100);
+			appStore.selectElements(pageId, [a.id, b.id]);
+			const drag = makeDrag();
+
+			drag.start(pointerEvent('pointerdown', 0, 0), a);
+			move(50, 30);
+			await frames();
+
+			expect(current(a)).toMatchObject({ x: 400, y: 360 });
+			expect(current(b)).toMatchObject({ x: 700, y: 560 });
+			release();
+			expect(appStore.getSelectedElements().map((el) => el.id)).toEqual([a.id, b.id]);
+		});
+
+		it('keeps the whole group inside the boundaries, preserving the distance between elements', async () => {
+			const a = addShape(300, 300, 100, 100);
+			const b = addShape(600, 500, 100, 100);
+			appStore.selectElements(pageId, [a.id, b.id]);
+			const { horizontal } = appStore.getPages()[pageId].boundaries;
+			const drag = makeDrag();
+
+			drag.start(pointerEvent('pointerdown', 0, 0), a);
+			move(100000, 0);
+			await frames();
+
+			expect(current(b).x).toBe(horizontal.end - 100); // the rightmost element reaches the edge
+			expect(current(b).x - current(a).x).toBe(300);
+			release();
+		});
+
+		it('dragging an element outside the selection selects just that element', async () => {
+			const a = addShape(300, 300, 100, 100);
+			const b = addShape(600, 500, 100, 100);
+			const c = addShape(900, 900, 100, 100);
+			appStore.selectElements(pageId, [a.id, b.id]);
+			const drag = makeDrag();
+
+			drag.start(pointerEvent('pointerdown', 0, 0), c);
+			move(10, 0);
+			await frames();
+
+			expect(current(c).x).toBe(920);
+			expect(current(a).x).toBe(300);
+			expect(appStore.getSelectedElements().map((el) => el.id)).toEqual([c.id]);
+			release();
+		});
+	});
+
+	it('tells a click from a drag', async () => {
+		const el = addShape(300, 300, 100, 100);
+		const drag = makeDrag();
+
+		drag.start(pointerEvent('pointerdown', 10, 10), el);
+		move(11, 11);
+		release();
+		expect(drag.consumeMoved()).toBe(false);
+
+		drag.start(pointerEvent('pointerdown', 10, 10), el);
+		move(40, 40);
+		release();
+		expect(drag.consumeMoved()).toBe(true);
+		expect(drag.consumeMoved()).toBe(false); // read once
+	});
 });
 
 describe('createElementResize', () => {
@@ -298,5 +366,59 @@ describe('createElementResize', () => {
 
 		document.dispatchEvent(touchEvent('touchcancel', 25, 25));
 		expect(resize.isResizing).toBe(false);
+	});
+});
+
+describe('createMarquee', () => {
+	it('selects the elements the box touches while it grows', () => {
+		const a = addShape(200, 200, 100, 100);
+		const b = addShape(800, 800, 100, 100);
+		const far = addShape(1500, 1500, 100, 100);
+		appStore.selectElement(null);
+		const marquee = createMarquee(options());
+
+		marquee.start(pointerEvent('pointerdown', 50, 50), false); // page 100,100
+		move(250, 250); // page 500,500
+		expect(marquee.box).toEqual({ x: 100, y: 100, width: 400, height: 400 });
+		expect(appStore.getSelectedElements().map((el) => el.id)).toEqual([a.id]);
+
+		move(500, 500); // page 1000,1000
+		expect(appStore.getSelectedElements().map((el) => el.id)).toEqual([a.id, b.id]);
+		expect(appStore.isSelected(far.id)).toBe(false);
+
+		release();
+		expect(marquee.box).toBeNull();
+		expect(marquee.consumeMoved()).toBe(true);
+	});
+
+	it('adds to the current selection when additive', () => {
+		const a = addShape(200, 200, 100, 100);
+		const b = addShape(800, 800, 100, 100);
+		appStore.selectElement(a);
+		const marquee = createMarquee(options());
+
+		marquee.start(pointerEvent('pointerdown', 350, 350), true);
+		move(500, 500);
+
+		expect(
+			appStore
+				.getSelectedElements()
+				.map((el) => el.id)
+				.sort()
+		).toEqual([a.id, b.id].sort());
+		release();
+	});
+
+	it('a press without movement is a click and changes nothing', () => {
+		const a = addShape(200, 200, 100, 100);
+		appStore.selectElement(a);
+		const marquee = createMarquee(options());
+
+		marquee.start(pointerEvent('pointerdown', 700, 700), false);
+		move(701, 701);
+		release();
+
+		expect(marquee.consumeMoved()).toBe(false);
+		expect(appStore.getSelectedElements().map((el) => el.id)).toEqual([a.id]);
 	});
 });

@@ -41,7 +41,10 @@ const createAppStore = () => {
 
 	let scale = $state(DISPLAY_SCALE);
 
-	let selectedElement: TCanvasElement | null = $state(null);
+	// The selected elements, all on one page
+	let selection: { pageId: string; ids: string[] } = $state({ pageId: '', ids: [] });
+	// Taps select several elements instead of one: for touch screens, which have no Shift key
+	let multiSelectMode = $state(false);
 
 	// Helper to get next zIndex for a page
 	const getNextZIndex = (pageId: string): number => {
@@ -146,7 +149,24 @@ const createAppStore = () => {
 
 	const getPage = (pageId: string) => currentDocument.pages[pageId];
 
-	const getSelectedElement = () => selectedElement;
+	const getSelectedElements = (): TCanvasElement[] => {
+		const page = currentDocument.pages[selection.pageId];
+		if (!page) return [];
+		return selection.ids.flatMap((id) => (page.elements[id] ? [page.elements[id]] : []));
+	};
+
+	/** The selected element, when exactly one is selected. */
+	const getSelectedElement = (): TCanvasElement | null => {
+		const selected = getSelectedElements();
+		return selected.length === 1 ? selected[0] : null;
+	};
+
+	const isSelected = (elementId: string) => selection.ids.includes(elementId);
+
+	const getMultiSelectMode = () => multiSelectMode;
+	const setMultiSelectMode = (on: boolean) => {
+		multiSelectMode = on;
+	};
 
 	/** Changes whenever the pages change; loading or starting a document does not count. */
 	const getRevision = () => revision;
@@ -154,6 +174,7 @@ const createAppStore = () => {
 	// Mutations
 	const setCurrentDocument = (document: DocumentData) => {
 		currentDocument = { ...document };
+		selectElement(null);
 	};
 
 	const updateDocumentPages = (pages: Record<string, DocumentPage>) => {
@@ -266,15 +287,27 @@ const createAppStore = () => {
 				elements: { ...page.elements, [elementId]: updatedElement }
 			}
 		});
-
-		// Update selected reference if needed
-		if (selectedElement && selectedElement.id === elementId) {
-			selectElement(updatedElement);
-		}
 	};
 
+	/** Select one element, or clear the selection with null. */
 	const selectElement = (element: TCanvasElement | null) => {
-		selectedElement = element;
+		selection = element ? { pageId: element.pageId, ids: [element.id] } : { pageId: '', ids: [] };
+	};
+
+	/** Select these elements of a page, replacing the selection. */
+	const selectElements = (pageId: string, elementIds: string[]) => {
+		selection = elementIds.length ? { pageId, ids: [...elementIds] } : { pageId: '', ids: [] };
+	};
+
+	/** Add the element to the selection, or remove it if it is already selected. */
+	const toggleSelected = (element: TCanvasElement) => {
+		if (selection.pageId !== element.pageId) return selectElement(element);
+		selectElements(
+			element.pageId,
+			selection.ids.includes(element.id)
+				? selection.ids.filter((id) => id !== element.id)
+				: [...selection.ids, element.id]
+		);
 	};
 
 	const deleteElement = (elementId: string, pageId: string) => {
@@ -296,15 +329,45 @@ const createAppStore = () => {
 		});
 
 		// Deselect the element after deletion
-		if (selectedElement && selectedElement.id === elementId) {
-			selectElement(null);
+		if (selection.ids.includes(elementId)) {
+			selectElements(
+				selection.pageId,
+				selection.ids.filter((id) => id !== elementId)
+			);
 		}
+	};
+
+	/** Delete several elements of a page at once. */
+	const deleteElements = (elementIds: string[], pageId: string) => {
+		const page = getPage(pageId);
+		if (!page) return;
+
+		const elements = { ...page.elements };
+		for (const id of elementIds) delete elements[id];
+		updateDocumentPages({ ...currentDocument.pages, [pageId]: { ...page, elements } });
+		selectElements(
+			selection.pageId,
+			selection.ids.filter((id) => !elementIds.includes(id))
+		);
+	};
+
+	/** Move several elements of a page at once, to the given positions. */
+	const moveElements = (pageId: string, positions: Record<string, { x: number; y: number }>) => {
+		const page = getPage(pageId);
+		if (!page) return;
+
+		const elements = { ...page.elements };
+		for (const [id, { x, y }] of Object.entries(positions)) {
+			if (elements[id]) elements[id] = { ...elements[id], x, y };
+		}
+		updateDocumentPages({ ...currentDocument.pages, [pageId]: { ...page, elements } });
 	};
 
 	const deletePage = (pageId: string) => {
 		const pages = { ...currentDocument.pages };
 		delete pages[pageId];
 		updateDocumentPages(pages);
+		if (selection.pageId === pageId) selectElement(null);
 	};
 
 	// Move element from one parent to another
@@ -365,6 +428,9 @@ const createAppStore = () => {
 		// State getters
 		getPages,
 		getSelectedElement,
+		getSelectedElements,
+		isSelected,
+		getMultiSelectMode,
 		getCurrentDocument,
 		getPageElements,
 		getScale,
@@ -376,8 +442,13 @@ const createAppStore = () => {
 		addElement,
 		updateElement,
 		deleteElement,
+		deleteElements,
 		deletePage,
 		selectElement,
+		selectElements,
+		toggleSelected,
+		setMultiSelectMode,
+		moveElements,
 		updateBoundaries,
 		moveElement,
 		findElement,

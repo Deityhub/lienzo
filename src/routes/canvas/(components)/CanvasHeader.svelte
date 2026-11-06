@@ -4,7 +4,7 @@
 	import { appStore } from '$lib/stores/appStore.svelte.ts';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import { Download, Plus, Save, Upload } from '@lucide/svelte';
+	import { BoxSelect, Download, Plus, Save, Upload } from '@lucide/svelte';
 	import type { SaveStatus } from '$lib/canvas/autosave.svelte';
 
 	interface Props {
@@ -35,6 +35,8 @@
 		onExport,
 		onImportFile
 	}: Props = $props();
+
+	const multiSelectMode = $derived(appStore.getMultiSelectMode());
 
 	let importInput: HTMLInputElement | undefined = $state();
 
@@ -78,6 +80,18 @@
 					<Plus class="mr-2 h-4 w-4" />
 					Add Page
 				</Button>
+				<!-- Clicking it must not clear the selection -->
+				<span data-keep-selection>
+					<Button
+						onClick={() => appStore.setMultiSelectMode(!multiSelectMode)}
+						variant={multiSelectMode ? 'primary' : 'secondary'}
+						aria-pressed={multiSelectMode}
+						data-testid="multi-select-toggle"
+					>
+						<BoxSelect class="mr-2 h-4 w-4" />
+						Select multiple
+					</Button>
+				</span>
 				<div class="mr-4 flex items-baseline gap-2">
 					<span class="text-sm text-muted-foreground" data-testid="page-count">
 						{pageCount}

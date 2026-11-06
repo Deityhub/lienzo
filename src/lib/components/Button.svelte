@@ -23,6 +23,7 @@
 		onClick?: (event: MouseEvent) => void;
 		children?: Snippet;
 		'data-testid'?: string;
+		'aria-pressed'?: boolean;
 	};
 
 	const {

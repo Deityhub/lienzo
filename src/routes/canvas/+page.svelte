@@ -124,12 +124,27 @@
 		const warn = (event: BeforeUnloadEvent) => {
 			if (autosave.hasUnsaved) event.preventDefault();
 		};
+		// Delete removes the selected elements (but not while typing in a field)
+		const deleteSelected = (event: KeyboardEvent) => {
+			if (event.key !== 'Delete' && event.key !== 'Backspace') return;
+			const target = event.target as HTMLElement | null;
+			if (target?.closest('input, textarea, select, [contenteditable="true"]')) return;
+			const selected = appStore.getSelectedElements();
+			if (!selected.length) return;
+			event.preventDefault();
+			appStore.deleteElements(
+				selected.map((el) => el.id),
+				selected[0].pageId
+			);
+		};
+		document.addEventListener('keydown', deleteSelected);
 		document.addEventListener('visibilitychange', flush);
 		window.addEventListener('pagehide', flush);
 		window.addEventListener('beforeunload', warn);
 
 		return () => {
 			stopTracking();
+			document.removeEventListener('keydown', deleteSelected);
 			document.removeEventListener('visibilitychange', flush);
 			window.removeEventListener('pagehide', flush);
 			window.removeEventListener('beforeunload', warn);

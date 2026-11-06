@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { RulerBoundaries, TCanvasElement } from '../types/canvas';
 import {
+	boundingRect,
 	clampPosition,
 	constrainToBoundaries,
 	dragPosition,
@@ -8,6 +9,7 @@ import {
 	findElementAt,
 	newElementPlacement,
 	getOverlappingElements,
+	rectBetween,
 	rectsOverlap,
 	resizeRect,
 	snapToBoundaries
@@ -318,5 +320,28 @@ describe('newElementPlacement', () => {
 		expect(newElementPlacement({ x: 900, y: 900 }, bounds, [below, above]).parentElementId).toBe(
 			null
 		);
+	});
+});
+
+describe('boundingRect', () => {
+	it('contains all the rectangles', () => {
+		expect(
+			boundingRect([
+				{ x: 10, y: 20, width: 30, height: 40 },
+				{ x: 100, y: 5, width: 10, height: 10 }
+			])
+		).toEqual({ x: 10, y: 5, width: 100, height: 55 });
+	});
+	it('is null for nothing', () => expect(boundingRect([])).toBeNull());
+});
+
+describe('rectBetween', () => {
+	it('works whichever corner comes first', () => {
+		expect(rectBetween({ x: 50, y: 10 }, { x: 20, y: 40 })).toEqual({
+			x: 20,
+			y: 10,
+			width: 30,
+			height: 30
+		});
 	});
 });

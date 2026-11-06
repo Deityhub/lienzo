@@ -6,6 +6,7 @@
 	import type { DocumentPage, TCanvasInstance } from '$lib/types/canvas';
 	import { pixelsToPercent } from '$lib/utils';
 	import {
+		boundingRect,
 		constrainToBoundaries,
 		dragPreviewRect,
 		findElementAt,
@@ -13,9 +14,17 @@
 	} from '$lib/utils/geometry';
 	import { createElementDrag } from '$lib/canvas/elementDrag.svelte';
 	import { createElementResize } from '$lib/canvas/elementResize.svelte';
+	import { createMarquee } from '$lib/canvas/marquee.svelte';
+	import type { TCanvasElement } from '$lib/types/canvas';
 
 	const selectedElement = $derived(appStore.getSelectedElement());
 	const scale = $derived(appStore.getScale());
+	const multiSelectMode = $derived(appStore.getMultiSelectMode());
+	const selectedHere = $derived(
+		appStore.getSelectedElements().filter((el) => el.pageId === page.id)
+	);
+	// A box around the selection, when several elements are selected
+	const selectionBox = $derived(selectedHere.length > 1 ? boundingRect(selectedHere) : null);
 
 	interface CanvasProps {
 		page: DocumentPage;
@@ -70,6 +79,23 @@
 		onHover: (elementId) => (hoveredElementId = elementId)
 	});
 	const resize = createElementResize(pointerOptions);
+	const marquee = createMarquee(pointerOptions);
+
+	/** Shift/Ctrl/Cmd, or the select-multiple mode: add to the selection instead of replacing it */
+	const isAdditive = (event: MouseEvent | PointerEvent | TouchEvent) =>
+		multiSelectMode || event.shiftKey || event.ctrlKey || event.metaKey;
+
+	function handleElementPress(event: PointerEvent | TouchEvent, element: TCanvasElement) {
+		// An unselected element is added by the click that follows, not dragged
+		if (isAdditive(event) && !appStore.isSelected(element.id)) return;
+		drag.start(event, element);
+	}
+
+	function handleElementClick(event: MouseEvent, element: TCanvasElement) {
+		if (drag.consumeMoved()) return; // the click that ends a drag
+		if (isAdditive(event)) appStore.toggleSelected(element);
+		else if (!appStore.isSelected(element.id)) appStore.selectElement(element);
+	}
 
 	// Update highlighted elements when selection changes
 	$effect(() => {
@@ -117,8 +143,9 @@
 			);
 
 			const isInsidePropertyPanel = propertyPanel?.contains(event.target as Node);
+			const keepsSelection = (event.target as Element).closest?.('[data-keep-selection]');
 
-			if (!isInsideAnyCanvas && !isInsidePropertyPanel) {
+			if (!isInsideAnyCanvas && !isInsidePropertyPanel && !keepsSelection) {
 				appStore.selectElement(null);
 			}
 		};
@@ -131,6 +158,7 @@
 
 	function handleCanvasClick(event: MouseEvent) {
 		if (event.target === canvasRef) {
+			if (marquee.consumeMoved()) return; // the click that ends a selection box
 			appStore.selectElement(null);
 		}
 	}
@@ -219,7 +247,14 @@
 				class="relative bg-background shadow-lg"
 				style:width="{width * scale}px"
 				style:height="{height * scale}px"
+				style:touch-action={multiSelectMode ? 'none' : undefined}
 				onclick={handleCanvasClick}
+				onpointerdown={(e) => {
+					// Touch screens scroll with a finger, so a selection box needs the select-multiple mode there
+					if (e.target === canvasRef && (e.pointerType !== 'touch' || multiSelectMode)) {
+						marquee.start(e, isAdditive(e));
+					}
+				}}
 				role="button"
 				tabindex="0"
 				onkeydown={(e) => {
@@ -255,7 +290,7 @@
 
 				<!-- Render all elements (sorted by zIndex) -->
 				{#each Object.values(page.elements).sort((a, b) => a.zIndex - b.zIndex) as element (element.id)}
-					{@const isSelected = selectedElement?.id === element.id}
+					{@const isSelected = appStore.isSelected(element.id)}
 					{@const isHighlighted = highlightedElementIds.includes(element.id)}
 					{@const isHovered = hoveredElementId === element.id}
 					<div
@@ -268,7 +303,7 @@
 							? 'ring-2 ring-primary'
 							: ''} {isHovered ? 'ring-primary' : ''} {isHighlighted && !isSelected
 							? 'ring-primary/30'
-							: ''}"
+							: ''} {multiSelectMode ? '[&>div]:pointer-events-none' : ''}"
 						class:transition-none={drag.isDragging || resize.isResizing}
 						style:left={pixelsToPercent(element.x, width)}
 						style:top={pixelsToPercent(element.y, height)}
@@ -276,16 +311,43 @@
 						style:height={pixelsToPercent(element.height, height)}
 						style:z-index={element.zIndex}
 						style:touch-action="none"
-						onpointerdown={(e) => drag.start(e, element)}
-						ontouchstart={(e) => drag.start(e, element)}
+						onpointerdown={(e) => handleElementPress(e, element)}
+						ontouchstart={(e) => handleElementPress(e, element)}
+						onclick={(e) => handleElementClick(e, element)}
 					>
 						<CanvasElement
 							{element}
-							{isSelected}
+							isSelected={isSelected && selectedHere.length === 1}
 							onResize={(event, direction) => resize.start(event, element, direction)}
 						/>
 					</div>
 				{/each}
+
+				<!-- Box around a multiple selection, and the selection box being dragged -->
+				{#if selectionBox}
+					<div
+						class="pointer-events-none absolute border-2 border-dashed border-primary"
+						style:left={pixelsToPercent(selectionBox.x, width)}
+						style:top={pixelsToPercent(selectionBox.y, height)}
+						style:width={pixelsToPercent(selectionBox.width, width)}
+						style:height={pixelsToPercent(selectionBox.height, height)}
+						style:z-index="9998"
+						data-testid="selection-box"
+						data-html2canvas-ignore
+					></div>
+				{/if}
+				{#if marquee.box}
+					<div
+						class="pointer-events-none absolute border border-primary bg-primary/10"
+						style:left={pixelsToPercent(marquee.box.x, width)}
+						style:top={pixelsToPercent(marquee.box.y, height)}
+						style:width={pixelsToPercent(marquee.box.width, width)}
+						style:height={pixelsToPercent(marquee.box.height, height)}
+						style:z-index="9999"
+						data-testid="marquee"
+						data-html2canvas-ignore
+					></div>
+				{/if}
 
 				<!-- Drag preview -->
 				{#if dragPreview}

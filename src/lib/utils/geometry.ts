@@ -24,6 +24,29 @@ export function rectsOverlap(a: Rect, b: Rect): boolean {
 	);
 }
 
+/** The smallest rectangle containing all the rectangles, or null for none. */
+export function boundingRect(rects: Rect[]): Rect | null {
+	if (!rects.length) return null;
+	const x = Math.min(...rects.map((r) => r.x));
+	const y = Math.min(...rects.map((r) => r.y));
+	return {
+		x,
+		y,
+		width: Math.max(...rects.map((r) => r.x + r.width)) - x,
+		height: Math.max(...rects.map((r) => r.y + r.height)) - y
+	};
+}
+
+/** The rectangle between two corner points, whichever way round they are. */
+export function rectBetween(a: Point, b: Point): Rect {
+	return {
+		x: Math.min(a.x, b.x),
+		y: Math.min(a.y, b.y),
+		width: Math.abs(a.x - b.x),
+		height: Math.abs(a.y - b.y)
+	};
+}
+
 /** Elements (other than `element` itself) that overlap `element`. */
 export function getOverlappingElements(
 	element: TCanvasElement,
