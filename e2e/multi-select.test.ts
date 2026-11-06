@@ -292,3 +292,40 @@ test('a group that sticks out of the page boundaries is moved in as one, keeping
 	expect((b!.x - a!.x) / k).toBeCloseTo(200, 0); // still 200 page pixels apart, not squeezed together
 	expect((b!.x + b!.width - canvas.x) / k).toBeCloseTo(1500, 0); // the group's right edge is at the boundary
 });
+
+test('dragging a corner of the selection box resizes everything in it proportionally', async ({
+	page
+}) => {
+	await openEditor(page);
+	await elements(page).nth(0).click();
+	await elements(page)
+		.nth(1)
+		.click({ modifiers: ['Shift'] });
+	await page.waitForTimeout(500);
+
+	const before = [
+		await elements(page).nth(0).boundingBox(),
+		await elements(page).nth(1).boundingBox()
+	];
+	const handle = (await page.getByTestId('group-resize-handle-se').boundingBox())!;
+	const from = { x: handle.x + handle.width / 2, y: handle.y + handle.height / 2 };
+	// the selection box is a and b: 900 wide (300..1200) and 200 tall (300..500)
+	const box = { width: before[1]!.x + before[1]!.width - before[0]!.x, height: before[0]!.height };
+
+	await page.mouse.move(from.x, from.y);
+	await page.mouse.down();
+	await page.mouse.move(from.x + box.width / 2, from.y + box.height / 2, { steps: 6 }); // 1.5 times as big
+	await page.mouse.up();
+
+	const after = [
+		await elements(page).nth(0).boundingBox(),
+		await elements(page).nth(1).boundingBox()
+	];
+	expect(after[0]!.width / before[0]!.width).toBeCloseTo(1.5, 1);
+	expect(after[0]!.height / before[0]!.height).toBeCloseTo(1.5, 1);
+	expect(after[1]!.width / before[1]!.width).toBeCloseTo(1.5, 1);
+	// the top-left corner stayed, and the gap between the elements grew by the same factor
+	expect(after[0]!.x).toBeCloseTo(before[0]!.x, 0);
+	expect(after[1]!.x - after[0]!.x).toBeCloseTo((before[1]!.x - before[0]!.x) * 1.5, 0);
+	await expect(title(page)).toHaveText('2 elements selected'); // still selected
+});

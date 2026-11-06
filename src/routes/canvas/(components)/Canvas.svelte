@@ -14,6 +14,7 @@
 	} from '$lib/utils/geometry';
 	import { createElementDrag } from '$lib/canvas/elementDrag.svelte';
 	import { createElementResize } from '$lib/canvas/elementResize.svelte';
+	import { createGroupResize } from '$lib/canvas/groupResize.svelte';
 	import { createMarquee } from '$lib/canvas/marquee.svelte';
 	import type { TCanvasElement } from '$lib/types/canvas';
 
@@ -79,7 +80,9 @@
 		onHover: (elementId) => (hoveredElementId = elementId)
 	});
 	const resize = createElementResize(pointerOptions);
+	const groupResize = createGroupResize(pointerOptions);
 	const marquee = createMarquee(pointerOptions);
+	const corners = ['nw', 'ne', 'sw', 'se'] as const;
 
 	/** Shift/Ctrl/Cmd, or the select-multiple mode: add to the selection instead of replacing it */
 	const isAdditive = (event: MouseEvent | PointerEvent | TouchEvent) =>
@@ -110,7 +113,7 @@
 	// Fit the elements into the boundaries when they change; the elements of a group stay together
 	function constrainElementsToBoundaries() {
 		const changes = boundaryAdjustments(Object.values(page.elements), page.boundaries);
-		if (Object.keys(changes).length) appStore.setElementRects(page.id, changes);
+		if (Object.keys(changes).length) appStore.updateElements(page.id, changes);
 	}
 
 	// Watch for boundary changes and constrain elements
@@ -293,7 +296,7 @@
 							: ''} {isHovered ? 'ring-primary' : ''} {isHighlighted && !isSelected
 							? 'ring-primary/30'
 							: ''} {multiSelectMode ? '[&>div]:pointer-events-none' : ''}"
-						class:transition-none={drag.isDragging || resize.isResizing}
+						class:transition-none={drag.isDragging || resize.isResizing || groupResize.isResizing}
 						style:left={pixelsToPercent(element.x, width)}
 						style:top={pixelsToPercent(element.y, height)}
 						style:width={pixelsToPercent(element.width, width)}
@@ -323,7 +326,35 @@
 						style:z-index="9998"
 						data-testid="selection-box"
 						data-html2canvas-ignore
-					></div>
+					>
+						<!-- Corner handles resize everything in the box, keeping its proportions -->
+						{#each corners as corner (corner)}
+							<div
+								class="pointer-events-auto absolute h-3 w-3 rounded-full border-2 border-primary-foreground bg-primary shadow-md {corner ===
+								'nw'
+									? '-top-1.5 -left-1.5 cursor-nw-resize'
+									: corner === 'ne'
+										? '-top-1.5 -right-1.5 cursor-ne-resize'
+										: corner === 'sw'
+											? '-bottom-1.5 -left-1.5 cursor-sw-resize'
+											: '-right-1.5 -bottom-1.5 cursor-se-resize'}"
+								style:touch-action="none"
+								onpointerdown={(e) => {
+									e.preventDefault();
+									e.stopPropagation();
+									groupResize.start(e, corner);
+								}}
+								ontouchstart={(e) => {
+									e.stopPropagation();
+									groupResize.start(e, corner);
+								}}
+								role="button"
+								tabindex="0"
+								onkeydown={null}
+								data-testid={`group-resize-handle-${corner}`}
+							></div>
+						{/each}
+					</div>
 				{/if}
 				{#if marquee.box}
 					<div

@@ -426,17 +426,14 @@ const createAppStore = () => {
 		updateDocumentPages({ ...currentDocument.pages, [pageId]: { ...page, elements } });
 	};
 
-	/** Set the position and size of several elements of a page at once. */
-	const setElementRects = (
-		pageId: string,
-		rects: Record<string, { x: number; y: number; width: number; height: number }>
-	) => {
+	/** Apply changes to several elements of a page at once, as a single change. */
+	const updateElements = (pageId: string, updates: Record<string, Partial<TCanvasElement>>) => {
 		const page = getPage(pageId);
 		if (!page) return;
 
 		const elements = { ...page.elements };
-		for (const [id, rect] of Object.entries(rects)) {
-			if (elements[id]) elements[id] = { ...elements[id], ...rect };
+		for (const [id, change] of Object.entries(updates)) {
+			if (elements[id]) elements[id] = { ...elements[id], ...change } as TCanvasElement;
 		}
 		updateDocumentPages({ ...currentDocument.pages, [pageId]: { ...page, elements } });
 	};
@@ -527,7 +524,7 @@ const createAppStore = () => {
 		toggleSelected,
 		setMultiSelectMode,
 		moveElements,
-		setElementRects,
+		updateElements,
 		groupSelected,
 		ungroupSelected,
 		updateBoundaries,

@@ -2,6 +2,10 @@ import { describe, expect, it } from 'vitest';
 import type { RulerBoundaries, TCanvasElement } from '../types/canvas';
 import {
 	boundaryAdjustments,
+	groupScaleFactor,
+	minScaleFactor,
+	oppositeCorner,
+	scaleRects,
 	boundingRect,
 	constrainGroupToBoundaries,
 	clampPosition,
@@ -415,5 +419,57 @@ describe('boundaryAdjustments', () => {
 		expect(changes.g1).toMatchObject({ x: 450 });
 		expect(changes.g2).toMatchObject({ x: 600 });
 		expect(changes.g2.x - changes.g1.x).toBe(150); // the group kept its shape
+	});
+});
+
+describe('group scaling', () => {
+	// boundaries: x 100..700, y 100..1000
+	const box = { x: 200, y: 200, width: 200, height: 100 };
+
+	it('the anchor is the corner opposite the handle', () => {
+		expect(oppositeCorner(box, 'se')).toEqual({ x: 200, y: 200 });
+		expect(oppositeCorner(box, 'nw')).toEqual({ x: 400, y: 300 });
+		expect(oppositeCorner(box, 'ne')).toEqual({ x: 200, y: 300 });
+		expect(oppositeCorner(box, 'sw')).toEqual({ x: 400, y: 200 });
+	});
+
+	it('scales positions and sizes around the anchor', () => {
+		const scaled = scaleRects(
+			[
+				{ x: 200, y: 200, width: 100, height: 50 },
+				{ x: 300, y: 250, width: 100, height: 50 }
+			],
+			{ x: 200, y: 200 },
+			2
+		);
+		expect(scaled).toEqual([
+			{ x: 200, y: 200, width: 200, height: 100 },
+			{ x: 400, y: 300, width: 200, height: 100 }
+		]);
+	});
+
+	it('the factor follows the handle, averaging horizontal and vertical movement', () => {
+		expect(groupScaleFactor(box, 'se', { x: 100, y: 50 }, bounds, 0.1)).toBe(1.5);
+		expect(groupScaleFactor(box, 'se', { x: 0, y: 0 }, bounds, 0.1)).toBe(1);
+		// dragging a top-left handle up and left grows the group
+		expect(groupScaleFactor(box, 'nw', { x: -100, y: -50 }, bounds, 0.1)).toBe(1.5);
+		expect(groupScaleFactor(box, 'se', { x: -100, y: -50 }, bounds, 0.1)).toBe(0.5);
+	});
+
+	it('never grows past the boundaries', () => {
+		// the box starts at x 200 and the right boundary is 700: at most 500/200 = 2.5 times as wide
+		expect(groupScaleFactor(box, 'se', { x: 5000, y: 5000 }, bounds, 0.1)).toBe(2.5);
+		// from the left handle the anchor is the right edge (400): 300/200 = 1.5
+		expect(groupScaleFactor(box, 'nw', { x: -5000, y: -5000 }, bounds, 0.1)).toBe(1.5);
+	});
+
+	it('never shrinks an element below the minimum size', () => {
+		const rects = [
+			{ x: 0, y: 0, width: 100, height: 40 },
+			{ x: 0, y: 0, width: 300, height: 300 }
+		];
+		expect(minScaleFactor(rects)).toBe(0.5); // 20 / 40
+		expect(minScaleFactor([{ x: 0, y: 0, width: 10, height: 10 }])).toBe(1); // already small: no further shrinking
+		expect(groupScaleFactor(box, 'se', { x: -5000, y: -5000 }, bounds, 0.5)).toBe(0.5);
 	});
 });

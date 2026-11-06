@@ -4,6 +4,7 @@ import { appStore } from '../stores/appStore.svelte.ts';
 import type { ResizeDirection, TCanvasElement } from '../types/canvas';
 import { createElementDrag } from './elementDrag.svelte';
 import { createElementResize } from './elementResize.svelte';
+import { createGroupResize } from './groupResize.svelte';
 import { createMarquee } from './marquee.svelte';
 
 // The canvas is 1000x1000 screen pixels showing a 2000x2000 page: every screen pixel is 2 page pixels.
@@ -459,5 +460,88 @@ describe('createMarquee', () => {
 
 		expect(marquee.consumeMoved()).toBe(false);
 		expect(appStore.getSelectedElements().map((el) => el.id)).toEqual([a.id]);
+	});
+});
+
+describe('createGroupResize', () => {
+	function addText(x: number, y: number, width: number, height: number, fontSize: number) {
+		appStore.addElement({ type: 'text', x, y, pageId, width, height });
+		const el = appStore.getSelectedElement()!;
+		appStore.updateElement({ elementId: el.id, updates: { fontSize }, pageId });
+		return current(el);
+	}
+
+	/** Two shapes and a text, 300x100 in total at page 300,300, all selected */
+	function setup() {
+		const a = addShape(300, 300, 100, 100);
+		const b = addShape(500, 300, 100, 100);
+		const t = addText(300, 300, 100, 100, 20);
+		appStore.selectElements(pageId, [a.id, b.id, t.id]);
+		return { a, b, t, resize: createGroupResize(options()) };
+	}
+
+	it('scales positions, sizes and text sizes together from the opposite corner', async () => {
+		const { a, b, t, resize } = setup();
+
+		resize.start(pointerEvent('pointerdown', 0, 0), 'se');
+		move(75, 25); // page 150, 50: the box (300x100) grows by 1.5
+		await frames();
+
+		expect(current(a)).toMatchObject({ x: 300, y: 300, width: 150, height: 150 });
+		expect(current(b)).toMatchObject({ x: 600, y: 300, width: 150, height: 150 });
+		expect(current(t)).toMatchObject({ x: 300, y: 300, width: 150, height: 150 });
+		expect((current(t) as { fontSize: number }).fontSize).toBe(30);
+		release();
+	});
+
+	it('works from the top-left corner, keeping the bottom-right in place', async () => {
+		const { a, b, resize } = setup();
+
+		resize.start(pointerEvent('pointerdown', 0, 0), 'nw');
+		move(-75, -25);
+		await frames();
+
+		// anchor is the bottom-right of the box (600, 400)
+		expect(current(b)).toMatchObject({ x: 450, y: 250, width: 150, height: 150 });
+		expect(current(a).x).toBe(600 - 300 * 1.5);
+		release();
+	});
+
+	it('is one change per move and applies the final position on release', () => {
+		const { a, resize } = setup();
+		resize.start(pointerEvent('pointerdown', 0, 0), 'se');
+		move(75, 25);
+		release();
+
+		expect(current(a).width).toBe(150);
+		expect(resize.isResizing).toBe(false);
+	});
+
+	it('stays inside the boundaries and above the minimum size', async () => {
+		const { a, b, resize } = setup();
+		const { horizontal } = appStore.getPages()[pageId].boundaries;
+
+		resize.start(pointerEvent('pointerdown', 0, 0), 'se');
+		move(100000, 100000);
+		await frames();
+		expect(current(b).x + current(b).width).toBeLessThanOrEqual(horizontal.end);
+
+		move(-100000, -100000);
+		await frames();
+		expect(current(a).width).toBeGreaterThanOrEqual(20);
+		release();
+	});
+
+	it('does not drift: the result depends on where the pointer is, not on the path', async () => {
+		const { a, resize } = setup();
+
+		resize.start(pointerEvent('pointerdown', 0, 0), 'se');
+		move(100, 100);
+		await frames();
+		move(75, 25);
+		await frames();
+
+		expect(current(a).width).toBe(150);
+		release();
 	});
 });
