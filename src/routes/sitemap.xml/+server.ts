@@ -1,9 +1,10 @@
 import { SITE_URL } from '$lib/const/seo';
+import { templates } from '$lib/templates';
 
 export const prerender = true;
 
 // Only indexable pages belong here (/canvas and /documents are per-user and noindex).
-const pages = ['/'];
+const pages = ['/', '/templates', ...templates.map((t) => `/templates/${t.id}`)];
 
 export function GET() {
 	const urls = pages

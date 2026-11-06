@@ -10,7 +10,11 @@ const config = {
 	// Consult https://svelte.dev/docs/kit/integrations
 	// for more information about preprocessors
 	preprocess: vitePreprocess(),
-	kit: { adapter }
+	kit: {
+		adapter,
+		// Links are plain absolute paths. The relative ones SvelteKit makes for prerendered pages came out wrong on /templates/[id].
+		paths: { relative: false }
+	}
 };
 
 export default config;
