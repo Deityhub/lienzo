@@ -289,25 +289,85 @@ const createAppStore = () => {
 		});
 	};
 
+	/** The ids plus every other member of the groups they belong to. */
+	const withGroupMembers = (pageId: string, ids: string[]): string[] => {
+		const page = getPage(pageId);
+		if (!page) return ids;
+		const groups = ids.flatMap((id) =>
+			page.elements[id]?.groupId ? [page.elements[id].groupId!] : []
+		);
+		const members = Object.values(page.elements)
+			.filter((el) => el.groupId && groups.includes(el.groupId) && !ids.includes(el.id))
+			.map((el) => el.id);
+		return [...ids, ...members];
+	};
+
+	/** Select these elements of a page, replacing the selection. Selecting part of a group selects all of it. */
+	const selectElements = (pageId: string, elementIds: string[]) => {
+		selection = elementIds.length
+			? { pageId, ids: withGroupMembers(pageId, elementIds) }
+			: { pageId: '', ids: [] };
+	};
+
 	/** Select one element, or clear the selection with null. */
 	const selectElement = (element: TCanvasElement | null) => {
-		selection = element ? { pageId: element.pageId, ids: [element.id] } : { pageId: '', ids: [] };
+		if (element) selectElements(element.pageId, [element.id]);
+		else selectElements('', []);
 	};
 
-	/** Select these elements of a page, replacing the selection. */
-	const selectElements = (pageId: string, elementIds: string[]) => {
-		selection = elementIds.length ? { pageId, ids: [...elementIds] } : { pageId: '', ids: [] };
-	};
-
-	/** Add the element to the selection, or remove it if it is already selected. */
+	/** Add the element (with its group) to the selection, or remove it if it is already selected. */
 	const toggleSelected = (element: TCanvasElement) => {
 		if (selection.pageId !== element.pageId) return selectElement(element);
+		const affected = withGroupMembers(element.pageId, [element.id]);
 		selectElements(
 			element.pageId,
 			selection.ids.includes(element.id)
-				? selection.ids.filter((id) => id !== element.id)
-				: [...selection.ids, element.id]
+				? selection.ids.filter((id) => !affected.includes(id))
+				: [...selection.ids, ...affected.filter((id) => !selection.ids.includes(id))]
 		);
+	};
+
+	/** Clear groupId on elements whose group has fewer than two members left. */
+	const withoutLoneGroups = (elements: Record<string, TCanvasElement>) => {
+		const counts: Record<string, number> = {};
+		for (const el of Object.values(elements)) {
+			if (el.groupId) counts[el.groupId] = (counts[el.groupId] ?? 0) + 1;
+		}
+		const result = { ...elements };
+		for (const [id, el] of Object.entries(result)) {
+			if (el.groupId && counts[el.groupId] < 2) {
+				const { groupId: _lone, ...rest } = el;
+				result[id] = rest as TCanvasElement;
+			}
+		}
+		return result;
+	};
+
+	/** Make the selected elements one group, so they are selected and moved together. */
+	const groupSelected = () => {
+		const selected = getSelectedElements();
+		if (selected.length < 2) return;
+		const page = getPage(selection.pageId);
+		const groupId = uuidv4();
+		const elements = { ...page.elements };
+		for (const el of selected) elements[el.id] = { ...el, groupId };
+		updateDocumentPages({
+			...currentDocument.pages,
+			[page.id]: { ...page, elements: withoutLoneGroups(elements) }
+		});
+	};
+
+	/** Dissolve the groups of the selected elements. They stay selected. */
+	const ungroupSelected = () => {
+		const selected = getSelectedElements();
+		if (!selected.some((el) => el.groupId)) return;
+		const page = getPage(selection.pageId);
+		const elements = { ...page.elements };
+		for (const el of selected) {
+			const { groupId: _removed, ...rest } = el;
+			elements[el.id] = rest as TCanvasElement;
+		}
+		updateDocumentPages({ ...currentDocument.pages, [page.id]: { ...page, elements } });
 	};
 
 	const deleteElement = (elementId: string, pageId: string) => {
@@ -324,7 +384,7 @@ const createAppStore = () => {
 			...currentDocument.pages,
 			[pageId]: {
 				...page,
-				elements: newElements
+				elements: withoutLoneGroups(newElements)
 			}
 		});
 
@@ -344,7 +404,10 @@ const createAppStore = () => {
 
 		const elements = { ...page.elements };
 		for (const id of elementIds) delete elements[id];
-		updateDocumentPages({ ...currentDocument.pages, [pageId]: { ...page, elements } });
+		updateDocumentPages({
+			...currentDocument.pages,
+			[pageId]: { ...page, elements: withoutLoneGroups(elements) }
+		});
 		selectElements(
 			selection.pageId,
 			selection.ids.filter((id) => !elementIds.includes(id))
@@ -359,6 +422,21 @@ const createAppStore = () => {
 		const elements = { ...page.elements };
 		for (const [id, { x, y }] of Object.entries(positions)) {
 			if (elements[id]) elements[id] = { ...elements[id], x, y };
+		}
+		updateDocumentPages({ ...currentDocument.pages, [pageId]: { ...page, elements } });
+	};
+
+	/** Set the position and size of several elements of a page at once. */
+	const setElementRects = (
+		pageId: string,
+		rects: Record<string, { x: number; y: number; width: number; height: number }>
+	) => {
+		const page = getPage(pageId);
+		if (!page) return;
+
+		const elements = { ...page.elements };
+		for (const [id, rect] of Object.entries(rects)) {
+			if (elements[id]) elements[id] = { ...elements[id], ...rect };
 		}
 		updateDocumentPages({ ...currentDocument.pages, [pageId]: { ...page, elements } });
 	};
@@ -449,6 +527,9 @@ const createAppStore = () => {
 		toggleSelected,
 		setMultiSelectMode,
 		moveElements,
+		setElementRects,
+		groupSelected,
+		ungroupSelected,
 		updateBoundaries,
 		moveElement,
 		findElement,

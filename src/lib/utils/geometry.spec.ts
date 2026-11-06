@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import type { RulerBoundaries, TCanvasElement } from '../types/canvas';
 import {
+	boundaryAdjustments,
 	boundingRect,
+	constrainGroupToBoundaries,
 	clampPosition,
 	constrainToBoundaries,
 	dragPosition,
@@ -343,5 +345,75 @@ describe('rectBetween', () => {
 			width: 30,
 			height: 30
 		});
+	});
+});
+
+describe('constrainGroupToBoundaries', () => {
+	// boundaries: x 100..700, y 100..1000
+	const group = [
+		{ x: 200, y: 200, width: 100, height: 100 },
+		{ x: 400, y: 300, width: 100, height: 100 }
+	];
+
+	it('leaves a group that fits alone', () => {
+		expect(constrainGroupToBoundaries(group, bounds)).toEqual(group);
+	});
+
+	it('moves the whole group without changing the layout inside it', () => {
+		const moved = group.map((r) => ({ ...r, x: r.x + 300 })); // sticks out on the right (box 500..800)
+		const fitted = constrainGroupToBoundaries(moved, bounds);
+
+		expect(fitted[1].x + fitted[1].width).toBe(700); // the right edge of the group is at the boundary
+		expect(fitted[1].x - fitted[0].x).toBe(200); // spacing kept
+		expect(fitted[1].y - fitted[0].y).toBe(100);
+		expect(fitted.map((r) => r.width)).toEqual([100, 100]);
+	});
+
+	it('moves a group that is above or left of the boundaries to the corner', () => {
+		const outside = group.map((r) => ({ ...r, x: r.x - 150, y: r.y - 150 }));
+		const [first] = constrainGroupToBoundaries(outside, bounds);
+		expect(first).toMatchObject({ x: 100, y: 100 });
+	});
+
+	it('scales down a group that is too big, keeping its proportions', () => {
+		const huge = [
+			{ x: 100, y: 100, width: 1200, height: 400 },
+			{ x: 100, y: 500, width: 1200, height: 400 }
+		]; // 1200x800 in a 600x900 area: half size
+		const fitted = constrainGroupToBoundaries(huge, bounds);
+
+		expect(fitted[0]).toEqual({ x: 100, y: 100, width: 600, height: 200 });
+		expect(fitted[1]).toEqual({ x: 100, y: 300, width: 600, height: 200 });
+	});
+});
+
+describe('boundaryAdjustments', () => {
+	const el = (id: string, x: number, groupId?: string) =>
+		({
+			id,
+			type: 'shape',
+			pageId: 'p',
+			zIndex: 0,
+			x,
+			y: 200,
+			width: 100,
+			height: 100,
+			groupId
+		}) as TCanvasElement;
+
+	it('returns only what changes', () => {
+		expect(boundaryAdjustments([el('a', 200), el('b', 300)], bounds)).toEqual({});
+	});
+
+	it('fits single elements one by one and grouped elements together', () => {
+		const changes = boundaryAdjustments(
+			[el('single', 650), el('g1', 500, 'g'), el('g2', 650, 'g')], // g spans 500..750, 50 too far right
+			bounds
+		);
+
+		expect(changes.single).toMatchObject({ x: 600 });
+		expect(changes.g1).toMatchObject({ x: 450 });
+		expect(changes.g2).toMatchObject({ x: 600 });
+		expect(changes.g2.x - changes.g1.x).toBe(150); // the group kept its shape
 	});
 });

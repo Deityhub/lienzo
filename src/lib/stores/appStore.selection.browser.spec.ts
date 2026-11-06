@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { appStore } from './appStore.svelte.ts';
+import { deleteDocument, getDocument, saveDocument } from './idb';
 
 let pageId: string;
 const ids = () => appStore.getSelectedElements().map((el) => el.id);
@@ -114,5 +115,107 @@ describe('multi-select mode', () => {
 		appStore.setMultiSelectMode(true);
 		expect(appStore.getMultiSelectMode()).toBe(true);
 		appStore.setMultiSelectMode(false);
+	});
+});
+
+describe('groups', () => {
+	it('groups the selected elements and selects the whole group from any member', () => {
+		const [a, b, c] = addThree();
+		appStore.selectElements(pageId, [a, b]);
+
+		appStore.groupSelected();
+		const groupId = appStore.findElement(pageId, a)!.groupId;
+		expect(groupId).toBeTruthy();
+		expect(appStore.findElement(pageId, b)!.groupId).toBe(groupId);
+		expect(appStore.findElement(pageId, c)!.groupId).toBeUndefined();
+
+		appStore.selectElement(appStore.findElement(pageId, b));
+		expect(ids().sort()).toEqual([a, b].sort());
+
+		appStore.selectElements(pageId, [a]); // what a selection box does
+		expect(ids().sort()).toEqual([a, b].sort());
+	});
+
+	it('toggling a member adds or removes the whole group', () => {
+		const [a, b, c] = addThree();
+		appStore.selectElements(pageId, [a, b]);
+		appStore.groupSelected();
+		appStore.selectElement(appStore.findElement(pageId, c));
+
+		appStore.toggleSelected(appStore.findElement(pageId, a)!);
+		expect(ids().sort()).toEqual([a, b, c].sort());
+
+		appStore.toggleSelected(appStore.findElement(pageId, b)!);
+		expect(ids()).toEqual([c]);
+	});
+
+	it('needs at least two elements to group', () => {
+		const [a] = addThree();
+		appStore.selectElements(pageId, [a]);
+		const before = appStore.getRevision();
+
+		appStore.groupSelected();
+
+		expect(appStore.getRevision()).toBe(before);
+		expect(appStore.findElement(pageId, a)!.groupId).toBeUndefined();
+	});
+
+	it('ungroups, keeping the elements selected', () => {
+		const [a, b] = addThree();
+		appStore.selectElements(pageId, [a, b]);
+		appStore.groupSelected();
+
+		appStore.ungroupSelected();
+
+		expect(appStore.findElement(pageId, a)).not.toHaveProperty('groupId');
+		expect(appStore.findElement(pageId, b)).not.toHaveProperty('groupId');
+		expect(ids().sort()).toEqual([a, b].sort());
+		appStore.selectElement(appStore.findElement(pageId, a));
+		expect(ids()).toEqual([a]); // no longer pulls b in
+	});
+
+	it('merges groups when grouping a selection that contains one', () => {
+		const [a, b, c] = addThree();
+		appStore.selectElements(pageId, [a, b]);
+		appStore.groupSelected();
+		appStore.selectElements(pageId, [a, c]); // a brings b along
+
+		appStore.groupSelected();
+
+		const groupIds = [a, b, c].map((id) => appStore.findElement(pageId, id)!.groupId);
+		expect(new Set(groupIds).size).toBe(1);
+		expect(groupIds[0]).toBeTruthy();
+	});
+
+	it('a group left with one element is dissolved', () => {
+		const [a, b, c] = addThree();
+		appStore.selectElements(pageId, [a, b, c]);
+		appStore.groupSelected();
+
+		appStore.deleteElements([a, b], pageId);
+		expect(appStore.findElement(pageId, c)).not.toHaveProperty('groupId');
+
+		appStore.selectElements(pageId, [c]);
+		appStore.addElement({ type: 'shape', x: 100, y: 400, pageId });
+		const d = appStore.getSelectedElement()!.id;
+		appStore.selectElements(pageId, [c, d]);
+		appStore.groupSelected();
+		appStore.deleteElement(d, pageId);
+		expect(appStore.findElement(pageId, c)).not.toHaveProperty('groupId');
+	});
+
+	it('survives saving and loading', async () => {
+		const [a, b] = addThree();
+		appStore.selectElements(pageId, [a, b]);
+		appStore.groupSelected();
+		const doc = { ...appStore.getCurrentDocument(), name: 'Grouped' };
+
+		await saveDocument(doc);
+		const stored = await getDocument(doc.id);
+		await deleteDocument(doc.id);
+
+		expect(stored!.pages[pageId].elements[a].groupId).toBe(
+			appStore.findElement(pageId, a)!.groupId
+		);
 	});
 });

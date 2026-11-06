@@ -137,10 +137,10 @@ export function createElementDrag(options: Options) {
 		if (session) teardown();
 
 		// Dragging a selected element moves the whole selection; any other element is selected first
+		// (with the rest of its group, if it has one)
+		if (!appStore.isSelected(element.id)) appStore.selectElement(element);
 		const selected = appStore.getSelectedElements();
-		const group = selected.length > 1 && selected.some((el) => el.id === element.id);
-		if (!group) appStore.selectElement(element);
-		const moving = group ? selected : [element];
+		const moving = selected.length ? selected : [element];
 		const box = boundingRect(moving)!;
 
 		const pointer = eventPoint(event);

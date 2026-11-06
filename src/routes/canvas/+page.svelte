@@ -124,27 +124,33 @@
 		const warn = (event: BeforeUnloadEvent) => {
 			if (autosave.hasUnsaved) event.preventDefault();
 		};
-		// Delete removes the selected elements (but not while typing in a field)
-		const deleteSelected = (event: KeyboardEvent) => {
-			if (event.key !== 'Delete' && event.key !== 'Backspace') return;
+		// Keyboard shortcuts for the selection (not while typing in a field)
+		const selectionShortcuts = (event: KeyboardEvent) => {
 			const target = event.target as HTMLElement | null;
 			if (target?.closest('input, textarea, select, [contenteditable="true"]')) return;
 			const selected = appStore.getSelectedElements();
 			if (!selected.length) return;
-			event.preventDefault();
-			appStore.deleteElements(
-				selected.map((el) => el.id),
-				selected[0].pageId
-			);
+
+			if (event.key === 'Delete' || event.key === 'Backspace') {
+				event.preventDefault();
+				appStore.deleteElements(
+					selected.map((el) => el.id),
+					selected[0].pageId
+				);
+			} else if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'g') {
+				event.preventDefault(); // Ctrl/Cmd+G groups, with Shift it ungroups
+				if (event.shiftKey) appStore.ungroupSelected();
+				else appStore.groupSelected();
+			}
 		};
-		document.addEventListener('keydown', deleteSelected);
+		document.addEventListener('keydown', selectionShortcuts);
 		document.addEventListener('visibilitychange', flush);
 		window.addEventListener('pagehide', flush);
 		window.addEventListener('beforeunload', warn);
 
 		return () => {
 			stopTracking();
-			document.removeEventListener('keydown', deleteSelected);
+			document.removeEventListener('keydown', selectionShortcuts);
 			document.removeEventListener('visibilitychange', flush);
 			window.removeEventListener('pagehide', flush);
 			window.removeEventListener('beforeunload', warn);

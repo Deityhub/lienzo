@@ -2,7 +2,7 @@
 	import { appStore } from '$lib/stores/appStore.svelte.ts';
 	import { slide } from 'svelte/transition';
 	import Button from '$lib/components/Button.svelte';
-	import { Trash2 } from '@lucide/svelte';
+	import { Group, Trash2, Ungroup } from '@lucide/svelte';
 	import PositionSize from './property-panels/PositionSize.svelte';
 	import Layering from './property-panels/Layering.svelte';
 	import TextProperties from './property-panels/TextProperties.svelte';
@@ -11,6 +11,12 @@
 
 	const selectedElement = $derived(appStore.getSelectedElement());
 	const selectedElements = $derived(appStore.getSelectedElements());
+	// Everything selected is one group
+	const isOneGroup = $derived(
+		selectedElements.length > 1 &&
+			selectedElements.every((el) => el.groupId && el.groupId === selectedElements[0].groupId)
+	);
+	const hasGroups = $derived(selectedElements.some((el) => el.groupId));
 	const pages = $derived(appStore.getPages());
 	const currentPage = $derived(selectedElement ? pages[selectedElement.pageId] : undefined);
 
@@ -73,11 +79,39 @@
 		{:else}
 			<div class="space-y-4 max-lg:flex max-lg:items-center max-lg:gap-2">
 				<h3 class="text-lg font-semibold text-foreground" data-testid="property-panel-title">
-					{selectedElements.length} elements selected
+					{isOneGroup ? 'Group of' : ''}
+					{selectedElements.length}
+					{isOneGroup ? 'elements' : 'elements selected'}
 				</h3>
 				<p class="text-sm text-muted-foreground max-lg:hidden">
-					Drag any of them to move them together.
+					{isOneGroup
+						? 'They are selected and moved together until you ungroup them.'
+						: 'Drag any of them to move them together, or group them to keep them together.'}
 				</p>
+				{#if !isOneGroup}
+					<Button
+						data-testid="group-btn"
+						onClick={() => appStore.groupSelected()}
+						variant="primary"
+						fullWidth
+						className="max-lg:min-w-[10rem]"
+					>
+						<Group class="mr-2 h-4 w-4" />
+						Group
+					</Button>
+				{/if}
+				{#if hasGroups}
+					<Button
+						data-testid="ungroup-btn"
+						onClick={() => appStore.ungroupSelected()}
+						variant="secondary"
+						fullWidth
+						className="max-lg:min-w-[10rem]"
+					>
+						<Ungroup class="mr-2 h-4 w-4" />
+						Ungroup
+					</Button>
+				{/if}
 				<Button
 					data-testid="delete-selected-btn"
 					onClick={() =>

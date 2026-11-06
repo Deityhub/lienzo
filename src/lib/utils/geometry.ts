@@ -124,6 +124,67 @@ export function constrainToBoundaries(element: Rect, boundaries: RulerBoundaries
 	return { x, y, width, height };
 }
 
+/**
+ * Fit a group into the boundaries as one: it moves without changing the layout inside it. Only a group
+ * too big for the boundaries is scaled down (keeping its proportions) until it fits.
+ */
+export function constrainGroupToBoundaries(rects: Rect[], boundaries: RulerBoundaries): Rect[] {
+	const box = boundingRect(rects);
+	if (!box) return [];
+	const { horizontal, vertical } = boundaries;
+
+	const factor = Math.min(
+		1,
+		(horizontal.end - horizontal.start) / box.width,
+		(vertical.end - vertical.start) / box.height
+	);
+	const width = box.width * factor;
+	const height = box.height * factor;
+	const x = Math.max(horizontal.start, Math.min(box.x, horizontal.end - width));
+	const y = Math.max(vertical.start, Math.min(box.y, vertical.end - height));
+
+	return rects.map((r) => ({
+		x: x + (r.x - box.x) * factor,
+		y: y + (r.y - box.y) * factor,
+		width: r.width * factor,
+		height: r.height * factor
+	}));
+}
+
+/**
+ * What has to change so every element fits the boundaries: elements of a group are fitted together,
+ * the others one by one. Returns only the elements that change.
+ */
+export function boundaryAdjustments(
+	elements: TCanvasElement[],
+	boundaries: RulerBoundaries
+): Record<string, Rect> {
+	const groups: Record<string, TCanvasElement[]> = {};
+	const fitted: Array<[TCanvasElement, Rect]> = [];
+
+	for (const el of elements) {
+		if (el.groupId) (groups[el.groupId] ??= []).push(el);
+		else fitted.push([el, constrainToBoundaries(el, boundaries)]);
+	}
+	for (const members of Object.values(groups)) {
+		const rects = constrainGroupToBoundaries(members, boundaries);
+		members.forEach((el, i) => fitted.push([el, rects[i]]));
+	}
+
+	const changes: Record<string, Rect> = {};
+	for (const [el, next] of fitted) {
+		if (
+			next.x !== el.x ||
+			next.y !== el.y ||
+			next.width !== el.width ||
+			next.height !== el.height
+		) {
+			changes[el.id] = next;
+		}
+	}
+	return changes;
+}
+
 /** New rectangle while resizing from a handle, `delta` being how far the pointer moved. */
 export function resizeRect(
 	start: Rect,

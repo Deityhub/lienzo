@@ -239,6 +239,25 @@ describe('createElementDrag', () => {
 			release();
 		});
 
+		it('dragging a member of a group moves the whole group, even when it is not selected', async () => {
+			const a = addShape(300, 300, 100, 100);
+			const b = addShape(600, 500, 100, 100);
+			const c = addShape(900, 900, 100, 100);
+			appStore.selectElements(pageId, [a.id, b.id]);
+			appStore.groupSelected();
+			appStore.selectElement(c);
+			const drag = makeDrag();
+
+			drag.start(pointerEvent('pointerdown', 0, 0), a);
+			move(50, 30);
+			await frames();
+
+			expect(current(a)).toMatchObject({ x: 400, y: 360 });
+			expect(current(b)).toMatchObject({ x: 700, y: 560 });
+			expect(current(c)).toMatchObject({ x: 900, y: 900 });
+			release();
+		});
+
 		it('dragging an element outside the selection selects just that element', async () => {
 			const a = addShape(300, 300, 100, 100);
 			const b = addShape(600, 500, 100, 100);
@@ -389,6 +408,26 @@ describe('createMarquee', () => {
 		release();
 		expect(marquee.box).toBeNull();
 		expect(marquee.consumeMoved()).toBe(true);
+	});
+
+	it('selects a whole group when the box touches one of its members', () => {
+		const a = addShape(200, 200, 100, 100);
+		const b = addShape(1500, 1500, 100, 100);
+		appStore.selectElements(pageId, [a.id, b.id]);
+		appStore.groupSelected();
+		appStore.selectElement(null);
+		const marquee = createMarquee(options());
+
+		marquee.start(pointerEvent('pointerdown', 50, 50), false);
+		move(200, 200); // only touches a
+		release();
+
+		expect(
+			appStore
+				.getSelectedElements()
+				.map((el) => el.id)
+				.sort()
+		).toEqual([a.id, b.id].sort());
 	});
 
 	it('adds to the current selection when additive', () => {

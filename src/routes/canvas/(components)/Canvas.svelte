@@ -6,8 +6,8 @@
 	import type { DocumentPage, TCanvasInstance } from '$lib/types/canvas';
 	import { pixelsToPercent } from '$lib/utils';
 	import {
+		boundaryAdjustments,
 		boundingRect,
-		constrainToBoundaries,
 		dragPreviewRect,
 		findElementAt,
 		getOverlappingElements
@@ -107,21 +107,10 @@
 		}
 	});
 
-	// Constrain all elements to boundaries when boundaries change
+	// Fit the elements into the boundaries when they change; the elements of a group stay together
 	function constrainElementsToBoundaries() {
-		for (const element of Object.values(page.elements)) {
-			const next = constrainToBoundaries(element, page.boundaries);
-
-			// Only update if something actually changed to avoid unnecessary re-renders
-			if (
-				next.x !== element.x ||
-				next.y !== element.y ||
-				next.width !== element.width ||
-				next.height !== element.height
-			) {
-				appStore.updateElement({ elementId: element.id, updates: next, pageId: element.pageId });
-			}
-		}
+		const changes = boundaryAdjustments(Object.values(page.elements), page.boundaries);
+		if (Object.keys(changes).length) appStore.setElementRects(page.id, changes);
 	}
 
 	// Watch for boundary changes and constrain elements

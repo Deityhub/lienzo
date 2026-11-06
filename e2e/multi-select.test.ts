@@ -186,3 +186,109 @@ test.describe('Selecting several elements', () => {
 		await expect(elements(page)).toHaveCount(4);
 	});
 });
+
+test.describe('Grouping', () => {
+	test('a group is selected and moved as one until it is ungrouped', async ({ page }) => {
+		await openEditor(page);
+		await elements(page).nth(0).click();
+		await elements(page)
+			.nth(1)
+			.click({ modifiers: ['Shift'] });
+		await page.getByTestId('group-btn').click();
+		await expect(title(page)).toHaveText('Group of 2 elements');
+		await expect(page.getByTestId('ungroup-btn')).toBeVisible();
+		await expect(page.getByTestId('group-btn')).toHaveCount(0);
+
+		// Click the empty page, then one member: the whole group is selected
+		const empty = await pagePoint(page, 1800, 2500);
+		await page.mouse.click(empty.x, empty.y);
+		await expect(page.getByTestId('property-panel')).toHaveCount(0);
+		await elements(page).nth(1).click();
+		await expect(title(page)).toHaveText('Group of 2 elements');
+
+		// Dragging one member moves both (the panel is open, so the page does not shift meanwhile)
+		await page.waitForTimeout(500);
+		const before = [
+			await elements(page).nth(0).boundingBox(),
+			await elements(page).nth(1).boundingBox()
+		];
+		const from = { x: before[1]!.x + 20, y: before[1]!.y + 20 };
+		await page.mouse.move(from.x, from.y);
+		await page.mouse.down();
+		await page.mouse.move(from.x + 30, from.y + 50, { steps: 5 });
+		await page.mouse.up();
+		const after = [
+			await elements(page).nth(0).boundingBox(),
+			await elements(page).nth(1).boundingBox()
+		];
+		for (const i of [0, 1]) {
+			expect(after[i]!.x - before[i]!.x).toBeCloseTo(30, 0);
+			expect(after[i]!.y - before[i]!.y).toBeCloseTo(50, 0);
+		}
+
+		await page.getByTestId('ungroup-btn').click();
+		await page.mouse.click(empty.x, empty.y);
+		await elements(page).nth(0).click();
+		await expect(title(page)).toContainText('Shape Properties'); // alone again
+	});
+
+	test('Ctrl+G groups and Ctrl+Shift+G ungroups', async ({ page }) => {
+		await openEditor(page);
+		await elements(page).nth(0).click();
+		await elements(page)
+			.nth(2)
+			.click({ modifiers: ['Shift'] });
+
+		await page.keyboard.press('Control+g');
+		await expect(title(page)).toHaveText('Group of 2 elements');
+
+		await page.keyboard.press('Control+Shift+G');
+		await expect(title(page)).toHaveText('2 elements selected');
+	});
+
+	test('a group is kept when the document is saved and opened again', async ({ page }) => {
+		await openEditor(page);
+		await elements(page).nth(0).click();
+		await elements(page)
+			.nth(1)
+			.click({ modifiers: ['Shift'] });
+		await page.getByTestId('group-btn').click();
+		await expect(page.getByTestId('save-status')).toHaveText('Saved', { timeout: 10000 });
+
+		await page.getByTestId('back-btn').click();
+		await page.getByRole('button', { name: 'Edit' }).click();
+		await elements(page).nth(0).click();
+
+		await expect(title(page)).toHaveText('Group of 2 elements');
+	});
+});
+
+test('a group that sticks out of the page boundaries is moved in as one, keeping its layout', async ({
+	page
+}) => {
+	const grouped = (id: string, x: number) => ({ ...shape(id, x, 300), groupId: 'g' });
+	await seedDocument(page, {
+		...doc,
+		id: 'sticks-out',
+		pages: {
+			p1: {
+				id: 'p1',
+				// the right boundary is at 1500, but the group spans 1200..1700
+				boundaries: { horizontal: { start: 100, end: 1500 }, vertical: { start: 100, end: 3408 } },
+				elements: { a: grouped('a', 1200), b: grouped('b', 1400) }
+			}
+		}
+	});
+	await page.getByRole('button', { name: 'Edit' }).click();
+	await expect(elements(page)).toHaveCount(2);
+	await page.waitForTimeout(500);
+
+	const [a, b] = [
+		await elements(page).nth(0).boundingBox(),
+		await elements(page).nth(1).boundingBox()
+	];
+	const canvas = (await page.getByTestId('document-canvas').boundingBox())!;
+	const k = canvas.width / 2480;
+	expect((b!.x - a!.x) / k).toBeCloseTo(200, 0); // still 200 page pixels apart, not squeezed together
+	expect((b!.x + b!.width - canvas.x) / k).toBeCloseTo(1500, 0); // the group's right edge is at the boundary
+});
