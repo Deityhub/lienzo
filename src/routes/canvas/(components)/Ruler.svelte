@@ -264,7 +264,7 @@
 			role="button"
 			tabindex="0"
 			onkeydown={null}
-			class="absolute z-10 cursor-grab text-primary active:cursor-grabbing"
+			class="absolute z-10 cursor-grab text-primary-text active:cursor-grabbing"
 			style:left="calc({startPercent}% - 6px)"
 			style:top="0"
 			onpointerdown={handleStartAnchorPointerDown}
@@ -279,7 +279,7 @@
 			role="button"
 			tabindex="0"
 			onkeydown={null}
-			class="absolute z-10 cursor-grab text-primary active:cursor-grabbing"
+			class="absolute z-10 cursor-grab text-primary-text active:cursor-grabbing"
 			style:left="0"
 			style:top="calc({startPercent}% - 6px)"
 			onpointerdown={handleStartAnchorPointerDown}
@@ -297,7 +297,7 @@
 			role="button"
 			tabindex="0"
 			onkeydown={null}
-			class="absolute z-10 cursor-grab text-destructive active:cursor-grabbing"
+			class="absolute z-10 cursor-grab text-destructive-text active:cursor-grabbing"
 			style:left="calc({endPercent}% - 6px)"
 			style:top="0"
 			onpointerdown={handleEndAnchorPointerDown}
@@ -312,7 +312,7 @@
 			role="button"
 			tabindex="0"
 			onkeydown={null}
-			class="absolute z-10 cursor-grab text-destructive active:cursor-grabbing"
+			class="absolute z-10 cursor-grab text-destructive-text active:cursor-grabbing"
 			style:left="0"
 			style:top="calc({endPercent}% - 6px)"
 			onpointerdown={handleEndAnchorPointerDown}

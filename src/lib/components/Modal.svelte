@@ -50,7 +50,7 @@
 		aria-modal="true"
 		tabindex="0"
 	>
-		<div class="mx-4 w-full max-w-lg rounded-lg bg-background shadow-xl">
+		<div class="mx-4 w-full max-w-lg rounded-xl bg-background shadow-xl">
 			<div class="flex items-start justify-between p-6">
 				<div class="pr-4">
 					{#if title}

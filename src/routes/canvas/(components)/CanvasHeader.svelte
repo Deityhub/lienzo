@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Button } from '$lib/components';
+	import { Button, ThemeToggle } from '$lib/components';
 	import { Icons } from '$lib/icons';
 	import { appStore } from '$lib/stores/appStore.svelte.ts';
 	import { goto } from '$app/navigation';
@@ -109,7 +109,7 @@
 					{#if canSave}
 						<span
 							class="text-xs {saveStatus === 'error'
-								? 'text-destructive'
+								? 'text-destructive-text'
 								: 'text-muted-foreground'}"
 							data-testid="save-status"
 							role="status"
@@ -132,6 +132,7 @@
 		</div>
 
 		<div class="flex items-center gap-2">
+			<ThemeToggle />
 			<Button onClick={onBack} variant="ghost" data-testid="back-btn">Back</Button>
 			<Button
 				disabled={busy}

@@ -98,7 +98,7 @@
 		type="button"
 		id={inputId}
 		onclick={handleButtonClick}
-		class="h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-left text-sm shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground"
+		class="h-9 w-full rounded border border-input bg-background px-3 py-1 text-left text-sm shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground"
 		style={`background-color: ${value}`}
 		aria-label={label ? `Select ${label} color` : 'Select color'}
 	>

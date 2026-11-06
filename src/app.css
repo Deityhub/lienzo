@@ -5,113 +5,136 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {
+	/*
+	 * Fluent 2 (web) palette, as HSL channels. Communication blue brand, neutral greys, 4px controls.
+	 * --primary is for fills; --primary-text is the same brand colour tuned for text and thin lines on the page.
+	 */
+
 	/* Base colors */
 	--background: 0 0% 100%;
-	--foreground: 222.2 84% 4.9%;
-	--border: 214.3 31.8% 91.4%;
-	--input: 214.3 31.8% 91.4%;
-	--ring: 221.2 83.2% 53.3%;
+	--foreground: 0 0% 14%;
+	--border: 0 0% 88%;
+	/* Borders of inputs and controls: 3:1 against the page, as WCAG asks of interface boundaries */
+	--input: 0 0% 52%;
+	--ring: 208 85% 40%;
 
-	/* Primary colors (indigo) */
-	--primary: 243 75% 59%;
+	/* The app backdrop, and the paper pages are drawn on (always white, in both themes) */
+	--surface: 0 0% 98%;
+	--paper: 0 0% 100%;
+	--paper-foreground: 0 0% 14%;
+
+	/* Primary colors (communication blue) */
+	--primary: 208 85% 40%;
 	--primary-foreground: 0 0% 100%;
-	--primary-light: 237 100% 96%;
-	--primary-dark: 243 75% 49%;
+	--primary-light: 212 74% 96%;
+	--primary-dark: 208 81% 35%;
+	--primary-text: 208 81% 35%;
 
-	/* Secondary colors (slate) */
-	--secondary: 215 16% 47%;
+	/* Secondary colors (neutral) */
+	--secondary: 0 0% 38%;
 	--secondary-foreground: 0 0% 100%;
-	--secondary-light: 210 20% 98%;
-	--secondary-dark: 215 19% 35%;
+	--secondary-light: 0 0% 96%;
+	--secondary-dark: 0 0% 26%;
 
 	/* Destructive colors (red) */
-	--destructive: 0 84.2% 60.2%;
+	--destructive: 355 85% 37%;
 	--destructive-foreground: 0 0% 100%;
-	--destructive-light: 0 100% 97%;
-	--destructive-dark: 0 84% 50%;
+	--destructive-light: 354 71% 97%;
+	--destructive-dark: 355 85% 30%;
+	--destructive-text: 355 85% 37%;
 
-	/* Success colors (emerald) */
-	--success: 142.1 70.6% 45.3%;
+	/* Success colors (green) */
+	--success: 120 77% 27%;
 	--success-foreground: 0 0% 100%;
-	--success-light: 142.1 76% 97%;
-	--success-dark: 142.1 70% 35%;
+	--success-light: 120 47% 96%;
+	--success-dark: 120 78% 25%;
 
-	/* Warning colors (amber) */
-	--warning: 38 92% 50%;
+	/* Warning colors (orange) */
+	--warning: 24 91% 39%;
 	--warning-foreground: 0 0% 100%;
-	--warning-light: 38 100% 96%;
-	--warning-dark: 38 92% 40%;
+	--warning-light: 24 100% 98%;
+	--warning-dark: 24 92% 32%;
+
+	--info: 208 85% 40%;
 
 	/* Muted colors */
-	--muted: 210 20% 98%;
-	--muted-foreground: 215.4 16.3% 46.9%;
+	--muted: 0 0% 96%;
+	--muted-foreground: 0 0% 38%;
 
 	/* Accent colors */
-	--accent: 210 20% 98%;
-	--accent-foreground: 222.2 47.4% 11.2%;
+	--accent: 0 0% 96%;
+	--accent-foreground: 0 0% 14%;
 
 	/* Card colors */
 	--card: 0 0% 100%;
-	--card-foreground: 222.2 84% 4.9%;
+	--card-foreground: 0 0% 14%;
 
 	/* Popover colors */
 	--popover: 0 0% 100%;
-	--popover-foreground: 222.2 84% 4.9%;
+	--popover-foreground: 0 0% 14%;
 }
 
 .dark {
 	/* Base colors */
-	--background: 222.2 84% 4.9%;
-	--foreground: 210 20% 98%;
-	--border: 217.2 32.6% 17.5%;
-	--input: 217.2 32.6% 17.5%;
-	--ring: 224.3 76.3% 48%;
+	--background: 0 0% 16%;
+	--foreground: 0 0% 100%;
+	--border: 0 0% 24%;
+	--input: 0 0% 50%;
+	--ring: 210 90% 62%;
 
-	/* Primary colors (indigo) - dark theme */
-	--primary: 243 75% 65%;
+	--surface: 0 0% 12%;
+	--paper: 0 0% 100%;
+	--paper-foreground: 0 0% 14%;
+
+	/* Primary colors (communication blue) - dark theme */
+	--primary: 208 81% 35%;
 	--primary-foreground: 0 0% 100%;
-	--primary-light: 243 75% 20%;
-	--primary-dark: 243 75% 75%;
+	--primary-light: 206 77% 21%;
+	--primary-dark: 208 85% 40%;
+	--primary-text: 210 90% 62%;
 
-	/* Secondary colors (slate) - dark theme */
-	--secondary: 215 25% 65%;
+	/* Secondary colors (neutral) - dark theme */
+	--secondary: 0 0% 40%;
 	--secondary-foreground: 0 0% 100%;
-	--secondary-light: 215 20% 20%;
-	--secondary-dark: 215 25% 75%;
+	--secondary-light: 0 0% 22%;
+	--secondary-dark: 0 0% 50%;
 
 	/* Destructive colors (red) - dark theme */
-	--destructive: 0 84.2% 65.2%;
+	--destructive: 357 62% 40%;
 	--destructive-foreground: 0 0% 100%;
-	--destructive-light: 0 84% 20%;
-	--destructive-dark: 0 84% 75%;
+	--destructive-light: 359 60% 15%;
+	--destructive-dark: 357 62% 34%;
+	--destructive-text: 355 82% 69%;
 
-	/* Success colors (emerald) - dark theme */
-	--success: 142.1 70.6% 55.3%;
-	--success-foreground: 0 0% 100%;
-	--success-light: 142.1 70% 20%;
-	--success-dark: 142.1 70% 65%;
+	/* Success colors (green) - dark theme */
+	--success: 120 37% 51%;
+	--success-foreground: 0 0% 7%;
+	--success-light: 120 66% 14%;
+	--success-dark: 120 37% 60%;
 
-	/* Warning colors (amber) - dark theme */
-	--warning: 38 92% 60%;
+	/* Warning colors (orange) - dark theme */
+	--warning: 42 85% 67%;
 	--warning-foreground: 0 0% 0%;
-	--warning-light: 38 92% 20%;
-	--warning-dark: 38 92% 70%;
+	--warning-light: 42 70% 13%;
+	--warning-dark: 42 85% 75%;
+
+	--info: 210 90% 62%;
 
 	/* Muted colors - dark theme */
-	--muted: 217.2 32.6% 17.5%;
-	--muted-foreground: 215 20.2% 65.1%;
+	--muted: 0 0% 22%;
+	--muted-foreground: 0 0% 68%;
 
 	/* Accent colors - dark theme */
-	--accent: 217.2 32.6% 17.5%;
-	--accent-foreground: 210 20% 98%;
+	--accent: 0 0% 22%;
+	--accent-foreground: 0 0% 100%;
 
 	/* Card colors - dark theme */
-	--card: 222.2 84% 4.9%;
-	--card-foreground: 210 20% 98%;
+	--card: 0 0% 16%;
+	--card-foreground: 0 0% 100%;
 
 	/* Popover colors - dark theme */
-	--popover: 222.2 84% 4.9%;
-	--popover-foreground: 210 20% 98%;
+	--popover: 0 0% 16%;
+	--popover-foreground: 0 0% 100%;
 }
 
 /* Map your CSS variables to Tailwind utilities using @theme */
@@ -122,12 +145,16 @@
 	--color-border: hsl(var(--border));
 	--color-input: hsl(var(--input));
 	--color-ring: hsl(var(--ring));
+	--color-surface: hsl(var(--surface));
+	--color-paper: hsl(var(--paper));
+	--color-paper-foreground: hsl(var(--paper-foreground));
 
 	/* Primary colors */
 	--color-primary: hsl(var(--primary));
 	--color-primary-foreground: hsl(var(--primary-foreground));
 	--color-primary-light: hsl(var(--primary-light));
 	--color-primary-dark: hsl(var(--primary-dark));
+	--color-primary-text: hsl(var(--primary-text));
 
 	/* Secondary colors */
 	--color-secondary: hsl(var(--secondary));
@@ -140,6 +167,7 @@
 	--color-destructive-foreground: hsl(var(--destructive-foreground));
 	--color-destructive-light: hsl(var(--destructive-light));
 	--color-destructive-dark: hsl(var(--destructive-dark));
+	--color-destructive-text: hsl(var(--destructive-text));
 
 	--color-success: hsl(var(--success));
 	--color-success-foreground: hsl(var(--success-foreground));

@@ -4,7 +4,7 @@
 	import type { DocumentData } from '$lib/types/canvas';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import { Button, Modal, Seo } from '$lib/components';
+	import { Button, Modal, Seo, ThemeToggle } from '$lib/components';
 	import { appStore } from '$lib/stores/appStore.svelte.ts';
 	import Document from './(components)/Document.svelte';
 	import { Icons } from '$lib/icons';
@@ -131,15 +131,12 @@
 							<div class="flex h-8 w-8 items-center justify-center">
 								<Icons.Logo />
 							</div>
-							<span
-								class="bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-xl font-bold text-transparent"
-							>
-								Lienzo
-							</span>
+							<span class="text-xl font-semibold tracking-tight text-foreground">Lienzo</span>
 						</div>
 					</Button>
 				</div>
 				<div class="flex w-full items-center gap-4 sm:w-auto">
+					<ThemeToggle />
 					<div class="relative flex-1 sm:w-64">
 						<div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
 							<svg
@@ -260,7 +257,7 @@
 			<div
 				class="mb-6 rounded-md p-4 text-sm {notice.kind === 'success'
 					? 'bg-success/15 text-foreground'
-					: 'bg-destructive/20 text-destructive'}"
+					: 'bg-destructive/20 text-destructive-text'}"
 				role={notice.kind === 'success' ? 'status' : 'alert'}
 				data-testid="import-notice"
 			>
@@ -288,7 +285,7 @@
 			<div class="rounded-md bg-destructive/20 p-4">
 				<div class="flex">
 					<div class="flex-shrink-0">
-						<svg class="h-5 w-5 text-destructive" viewBox="0 0 20 20" fill="currentColor">
+						<svg class="h-5 w-5 text-destructive-text" viewBox="0 0 20 20" fill="currentColor">
 							<path
 								fill-rule="evenodd"
 								d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z"
@@ -297,7 +294,7 @@
 						</svg>
 					</div>
 					<div class="ml-3">
-						<h3 class="text-sm font-medium text-destructive">{error}</h3>
+						<h3 class="text-sm font-medium text-destructive-text">{error}</h3>
 					</div>
 				</div>
 			</div>

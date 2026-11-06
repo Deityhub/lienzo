@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Button, Seo } from '$lib/components';
+	import { Button, Seo, ThemeToggle } from '$lib/components';
 	import { appStore } from '$lib/stores/appStore.svelte.ts';
 	import { ArrowRight, Download, Layers, Zap } from '@lucide/svelte';
 	import { Icons } from '$lib/icons';
@@ -38,13 +38,10 @@
 				<div class="flex h-8 w-8 items-center justify-center">
 					<Icons.Logo />
 				</div>
-				<span
-					class="bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-xl font-bold text-transparent"
-				>
-					Lienzo
-				</span>
+				<span class="text-xl font-semibold tracking-tight text-foreground">Lienzo</span>
 			</div>
 			<nav aria-label="Main" class="flex items-center gap-4">
+				<ThemeToggle />
 				<Button href="/documents" variant="text">My Documents</Button>
 				<Button onClick={() => appStore.initNewDocument()} href="/canvas" variant="primary"
 					>Start Building</Button
@@ -56,9 +53,7 @@
 	<!-- hero section -->
 	<section class="container mx-auto px-4 py-20 text-center">
 		<div class="animate-slide-up">
-			<h1
-				class="mb-6 bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-5xl font-bold text-transparent md:text-6xl"
-			>
+			<h1 class="mb-6 text-5xl font-semibold tracking-tight text-foreground md:text-6xl">
 				Create Beautiful Documents
 			</h1>
 			<p class="mx-auto mb-8 max-w-2xl text-xl text-muted-foreground">
@@ -79,7 +74,7 @@
 					<div
 						class="mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10 transition-transform group-hover:scale-110"
 					>
-						<Zap class="h-6 w-6 text-primary" />
+						<Zap class="h-6 w-6 text-primary-text" />
 					</div>
 					<h3 class="mb-3 text-xl font-semibold">Drag & Drop</h3>
 					<p class="text-muted-foreground">
@@ -94,7 +89,7 @@
 					<div
 						class="mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10 transition-transform group-hover:scale-110"
 					>
-						<Layers class="h-6 w-6 text-primary" />
+						<Layers class="h-6 w-6 text-primary-text" />
 					</div>
 					<h3 class="mb-3 text-xl font-semibold">Multiple Elements</h3>
 					<p class="text-muted-foreground">
@@ -109,7 +104,7 @@
 					<div
 						class="mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10 transition-transform group-hover:scale-110"
 					>
-						<Download class="h-6 w-6 text-primary" />
+						<Download class="h-6 w-6 text-primary-text" />
 					</div>
 					<h3 class="mb-3 text-xl font-semibold">Export to PDF</h3>
 					<p class="text-muted-foreground">
