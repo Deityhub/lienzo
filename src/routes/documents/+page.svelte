@@ -8,6 +8,13 @@
 	import { appStore } from '$lib/stores/appStore.svelte.ts';
 	import Document from './(components)/Document.svelte';
 	import { Icons } from '$lib/icons';
+	import {
+		DEFAULT_SORT,
+		SORT_OPTIONS,
+		isSortKey,
+		sortDocuments,
+		type SortKey
+	} from '$lib/utils/sortDocuments';
 	import { Download, Plus, Search, Upload } from '@lucide/svelte';
 	import {
 		exportAllDocuments,
@@ -22,6 +29,8 @@
 	let loading = $state(true);
 	let error = $state('');
 	let searchQuery = $state('');
+	const SORT_STORAGE_KEY = 'lienzo-documents-sort';
+	let sortKey = $state<SortKey>(DEFAULT_SORT);
 	let fileInput: HTMLInputElement | undefined = $state();
 	let importing = $state(false);
 	let notice = $state<{ kind: 'success' | 'error'; message: string; details: string[] } | null>(
@@ -107,10 +116,30 @@
 
 	// Filter documents based on search query
 	const filteredDocuments = $derived(
-		documents.filter((document) => document.name.toLowerCase().includes(searchQuery.toLowerCase()))
+		sortDocuments(
+			documents.filter((document) =>
+				document.name.toLowerCase().includes(searchQuery.toLowerCase())
+			),
+			sortKey
+		)
 	);
 
+	function changeSort(event: Event) {
+		sortKey = (event.currentTarget as HTMLSelectElement).value as SortKey;
+		try {
+			localStorage.setItem(SORT_STORAGE_KEY, sortKey);
+		} catch {
+			// not remembered, but it still sorts
+		}
+	}
+
 	onMount(() => {
+		try {
+			const saved = localStorage.getItem(SORT_STORAGE_KEY);
+			if (isSortKey(saved)) sortKey = saved;
+		} catch {
+			// storage can be blocked: keep the default order
+		}
 		if (!isIndexedDBSupported()) {
 			return goto(resolve('/'));
 		}
@@ -240,9 +269,25 @@
 
 	<!-- Main Content -->
 	<main class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-		<div class="mb-8">
-			<h1 class="text-2xl font-bold text-foreground">Documents</h1>
-			<p class="mt-1 text-sm text-muted-foreground">View and manage your documents</p>
+		<div class="mb-8 flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
+			<div>
+				<h1 class="text-2xl font-bold text-foreground">Documents</h1>
+				<p class="mt-1 text-sm text-muted-foreground">View and manage your documents</p>
+			</div>
+			<div class="flex items-center gap-2 max-sm:w-full max-sm:justify-end">
+				<label for="sort-documents" class="text-sm text-muted-foreground">Sort by</label>
+				<select
+					id="sort-documents"
+					value={sortKey}
+					onchange={changeSort}
+					data-testid="sort-select"
+					class="h-9 cursor-pointer rounded border border-input bg-background px-2 text-sm text-foreground focus:ring-2 focus:ring-ring focus:outline-none max-sm:h-11"
+				>
+					{#each SORT_OPTIONS as option (option.value)}
+						<option value={option.value}>{option.label}</option>
+					{/each}
+				</select>
+			</div>
 		</div>
 		{#if notice}
 			<div

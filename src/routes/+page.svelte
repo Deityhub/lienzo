@@ -4,7 +4,22 @@
 	import { Icons } from '$lib/icons';
 	import { ChevronDown } from '@lucide/svelte';
 	import { resolve } from '$app/paths';
+	import { templateById } from '$lib/templates';
+	import { openTemplate } from '$lib/templates/open';
+	import TemplatePreview from '$lib/templates/TemplatePreview.svelte';
 	import { AUTHOR_NAME, AUTHOR_URL, SITE_DESCRIPTION, SITE_NAME, SITE_URL } from '$lib/const/seo';
+
+	// A few of the templates, in the order they are shown. Only ones set in Inter, the one font this page loads.
+	const featured = [
+		'resume',
+		'invoice',
+		'event-flyer',
+		'one-page-report',
+		'proposal-cover',
+		'class-timetable'
+	]
+		.map((id) => templateById(id))
+		.filter((t) => t !== undefined);
 
 	const currentYear: number = new Date().getFullYear();
 
@@ -133,6 +148,11 @@
 				>Why Lienzo</a
 			>
 
+			<a
+				href="#templates"
+				class="hidden rounded px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-foreground md:block"
+				>Templates</a
+			>
 			<Button href="/documents" variant="ghost">My Documents</Button>
 			<span class="hidden sm:block">
 				<Button onClick={startBuilding} href="/canvas" variant="primary">Open the editor</Button>
@@ -167,8 +187,8 @@
 				<Button onClick={startBuilding} href="/canvas" variant="primary" size="l"
 					>Start designing</Button
 				>
-				<Button href="#compare" variant="ghost" size="l" className="border-input!"
-					>How is it different?</Button
+				<Button href="#templates" variant="ghost" size="l" className="border-input!"
+					>Browse templates</Button
 				>
 			</div>
 		</div>
@@ -225,6 +245,55 @@
 					</div>
 				</div>
 			</div>
+		</div>
+	</section>
+
+	<!-- templates -->
+	<section id="templates" aria-labelledby="templates-title" class="border-t border-border">
+		<div class="mx-auto flex max-w-[1100px] flex-col gap-10 px-4 py-16 md:px-8 md:py-28">
+			<div class="flex flex-wrap items-end justify-between gap-x-8 gap-y-4">
+				<div class="flex max-w-[600px] flex-col gap-3">
+					<h2
+						id="templates-title"
+						class="text-3xl leading-[38px] font-semibold tracking-[-0.025em] md:text-[40px] md:leading-12"
+					>
+						Start from a template
+					</h2>
+					<p class="text-base leading-6 text-muted-foreground">
+						Resumes, invoices, flyers, certificates and more. Every template is a normal Lienzo
+						document, so you can change anything.
+					</p>
+				</div>
+				<Button href="/templates" variant="secondary" data-testid="browse-templates"
+					>Browse all templates</Button
+				>
+			</div>
+			<ul class="grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-5" data-testid="featured-templates">
+				{#each featured as template (template.id)}
+					<li class="overflow-hidden rounded-lg border border-border bg-card">
+						<button
+							type="button"
+							onclick={() => openTemplate(template)}
+							data-testid="featured-{template.id}"
+							class="group flex h-full w-full cursor-pointer flex-col text-left focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none focus-visible:ring-inset"
+						>
+							<span class="flex justify-center bg-surface px-4 pt-5">
+								<span class="self-end transition-transform group-hover:-translate-y-1">
+									<TemplatePreview {template} width={150} />
+								</span>
+							</span>
+							<span class="flex flex-col gap-0.5 p-4">
+								<span class="text-base leading-[22px] font-semibold text-foreground"
+									>{template.name}</span
+								>
+								<span class="text-[13px] leading-[18px] text-muted-foreground"
+									>{template.category}</span
+								>
+							</span>
+						</button>
+					</li>
+				{/each}
+			</ul>
 		</div>
 	</section>
 
