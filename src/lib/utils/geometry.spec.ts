@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { RulerBoundaries, TCanvasElement } from '../types/canvas';
 import {
 	boundaryAdjustments,
+	pointInRect,
 	groupScaleFactor,
 	minScaleFactor,
 	oppositeCorner,
@@ -471,5 +472,18 @@ describe('group scaling', () => {
 		expect(minScaleFactor(rects)).toBe(0.5); // 20 / 40
 		expect(minScaleFactor([{ x: 0, y: 0, width: 10, height: 10 }])).toBe(1); // already small: no further shrinking
 		expect(groupScaleFactor(box, 'se', { x: -5000, y: -5000 }, bounds, 0.5)).toBe(0.5);
+	});
+});
+
+describe('pointInRect', () => {
+	const rect = { left: 10, top: 20, right: 110, bottom: 220 };
+	it('includes the inside and the edges', () => {
+		expect(pointInRect({ x: 50, y: 100 }, rect)).toBe(true);
+		expect(pointInRect({ x: 10, y: 20 }, rect)).toBe(true);
+		expect(pointInRect({ x: 110, y: 220 }, rect)).toBe(true);
+	});
+	it('excludes the outside', () => {
+		expect(pointInRect({ x: 9, y: 100 }, rect)).toBe(false);
+		expect(pointInRect({ x: 50, y: 221 }, rect)).toBe(false);
 	});
 });

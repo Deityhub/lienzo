@@ -6,6 +6,7 @@ import { createElementDrag } from './elementDrag.svelte';
 import { createElementResize } from './elementResize.svelte';
 import { createGroupResize } from './groupResize.svelte';
 import { createMarquee } from './marquee.svelte';
+import { pageDrop } from './pageDrop.svelte';
 
 // The canvas is 1000x1000 screen pixels showing a 2000x2000 page: every screen pixel is 2 page pixels.
 const SIZE = { width: 2000, height: 2000 };
@@ -542,6 +543,117 @@ describe('createGroupResize', () => {
 		await frames();
 
 		expect(current(a).width).toBe(150);
+		release();
+	});
+});
+
+describe('dragging to another page', () => {
+	let second: HTMLDivElement;
+	let secondId: string;
+
+	beforeEach(() => {
+		appStore.addPage();
+		secondId = Object.keys(appStore.getPages()).find((id) => id !== pageId)!;
+		// A second canvas to the right of the first, with the same scale
+		second = document.createElement('div');
+		second.id = `canvas-${secondId}`;
+		second.style.cssText = 'position:fixed;left:1100px;top:0;width:1000px;height:1000px';
+		document.body.appendChild(second);
+	});
+	afterEach(() => {
+		second.remove();
+		pageDrop.clear();
+	});
+
+	const makeDrag = () => createElementDrag({ ...options(), onHover: () => {} });
+
+	it('shows where the element would land and leaves it in place until it is dropped', async () => {
+		const el = addShape(300, 300, 100, 100);
+		const drag = makeDrag();
+
+		drag.start(pointerEvent('pointerdown', 160, 160), el); // grabs it 20 page pixels from its corner
+		move(1300, 300);
+		await frames();
+
+		expect(pageDrop.target?.pageId).toBe(secondId);
+		expect(pageDrop.target?.rects).toEqual([{ x: 380, y: 580, width: 100, height: 100 }]);
+		expect(current(el)).toMatchObject({ x: 300, y: 300 }); // still on the first page
+		release();
+	});
+
+	it('moves the element to the other page when dropped there, and selects it', () => {
+		const el = addShape(300, 300, 100, 100);
+		const drag = makeDrag();
+
+		drag.start(pointerEvent('pointerdown', 160, 160), el);
+		move(1300, 300);
+		release();
+
+		expect(appStore.findElement(pageId, el.id)).toBeNull();
+		expect(appStore.findElement(secondId, el.id)).toMatchObject({
+			pageId: secondId,
+			x: 380,
+			y: 580
+		});
+		expect(appStore.getSelectedElement()).toMatchObject({ id: el.id, pageId: secondId });
+		expect(pageDrop.target).toBeNull();
+	});
+
+	it('moves a whole selection, keeping the layout between its elements', () => {
+		const a = addShape(300, 300, 100, 100);
+		const b = addShape(500, 400, 100, 100);
+		appStore.selectElements(pageId, [a.id, b.id]);
+		const drag = makeDrag();
+
+		drag.start(pointerEvent('pointerdown', 160, 160), a);
+		move(1300, 300);
+		release();
+
+		expect(appStore.findElement(secondId, a.id)).toMatchObject({ x: 380, y: 580 });
+		expect(appStore.findElement(secondId, b.id)).toMatchObject({ x: 580, y: 680 });
+	});
+
+	it('dragging back to the first page cancels the move', async () => {
+		const el = addShape(300, 300, 100, 100);
+		const drag = makeDrag();
+
+		drag.start(pointerEvent('pointerdown', 160, 160), el);
+		move(1300, 300);
+		await frames();
+		expect(pageDrop.target).not.toBeNull();
+
+		move(400, 400);
+		await frames();
+		expect(pageDrop.target).toBeNull();
+		release();
+
+		expect(current(el)).toMatchObject({ pageId, x: 780, y: 780 }); // moved within the first page
+	});
+
+	it('cancelling mid-drag leaves the element where it was and clears the preview', async () => {
+		const el = addShape(300, 300, 100, 100);
+		const drag = makeDrag();
+
+		drag.start(pointerEvent('pointerdown', 160, 160), el);
+		move(1300, 300);
+		await frames();
+		drag.cancel();
+
+		expect(pageDrop.target).toBeNull();
+		expect(current(el)).toMatchObject({ x: 300, y: 300 });
+	});
+
+	it('puts the element back when it was moved on the first page before crossing', async () => {
+		const el = addShape(300, 300, 100, 100);
+		const drag = makeDrag();
+
+		drag.start(pointerEvent('pointerdown', 160, 160), el);
+		move(400, 400);
+		await frames();
+		move(1300, 300);
+		await frames();
+
+		expect(current(el)).toMatchObject({ x: 300, y: 300 });
 		release();
 	});
 });

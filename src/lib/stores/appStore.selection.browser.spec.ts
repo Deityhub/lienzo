@@ -219,3 +219,82 @@ describe('groups', () => {
 		);
 	});
 });
+
+describe('moving elements to another page', () => {
+	let otherId: string;
+	beforeEach(() => {
+		appStore.addPage();
+		otherId = Object.keys(appStore.getPages()).find((id) => id !== pageId)!;
+	});
+
+	it('moves them to the other page on top of what is there, in one change', () => {
+		appStore.addElement({ type: 'shape', x: 100, y: 100, pageId: otherId });
+		const existing = appStore.getSelectedElement()!;
+		const [a, b, c] = addThree();
+		const before = appStore.getRevision();
+
+		appStore.moveElementsToPage(pageId, otherId, {
+			[a]: { x: 150, y: 160 },
+			[b]: { x: 450, y: 160 }
+		});
+
+		expect(Object.keys(appStore.getPages()[pageId].elements)).toEqual([c]);
+		expect(Object.keys(appStore.getPages()[otherId].elements).sort()).toEqual(
+			[existing.id, a, b].sort()
+		);
+		const movedA = appStore.findElement(otherId, a)!;
+		expect(movedA).toMatchObject({ pageId: otherId, x: 150, y: 160, parentElementId: null });
+		expect(movedA.zIndex).toBeGreaterThan(existing.zIndex);
+		expect(appStore.findElement(otherId, b)!.zIndex).toBeGreaterThan(movedA.zIndex); // order kept
+		expect(ids().sort()).toEqual([a, b].sort()); // selected on the new page
+		expect(appStore.getSelectedElements()[0].pageId).toBe(otherId);
+		expect(appStore.getRevision()).toBe(before + 1);
+	});
+
+	it('keeps a moved group together and dissolves what it leaves behind', () => {
+		const [a, b, c] = addThree();
+		appStore.selectElements(pageId, [a, b, c]);
+		appStore.groupSelected();
+		const groupId = appStore.findElement(pageId, a)!.groupId;
+
+		appStore.moveElementsToPage(pageId, otherId, { [a]: { x: 100 }, [b]: { x: 300 } }); // c stays
+
+		expect(appStore.findElement(otherId, a)!.groupId).toBe(groupId);
+		expect(appStore.findElement(otherId, b)!.groupId).toBe(groupId);
+		expect(appStore.findElement(pageId, c)).not.toHaveProperty('groupId'); // alone, no longer a group
+	});
+
+	it('ignores unknown elements and the same page', () => {
+		const [a] = addThree();
+		const before = appStore.getRevision();
+
+		appStore.moveElementsToPage(pageId, otherId, { missing: { x: 1 } });
+		appStore.moveElementsToPage(pageId, pageId, { [a]: { x: 1 } });
+
+		expect(appStore.getRevision()).toBe(before);
+	});
+
+	it('moveSelectedToPage keeps the position when it fits on the other page', () => {
+		const [a, b] = addThree();
+		appStore.selectElements(pageId, [a, b]);
+
+		appStore.moveSelectedToPage(otherId);
+
+		expect(appStore.findElement(otherId, a)).toMatchObject({ x: 100, y: 100 });
+		expect(appStore.findElement(otherId, b)).toMatchObject({ x: 400, y: 100 });
+	});
+
+	it('moveSelectedToPage fits the elements into the other page boundaries', () => {
+		const [a] = addThree();
+		appStore.updateBoundaries(otherId, {
+			horizontal: { start: 100, end: 500 },
+			vertical: { start: 100, end: 1000 }
+		});
+		appStore.selectElements(pageId, [a]);
+		appStore.updateElement({ elementId: a, updates: { x: 800 }, pageId });
+
+		appStore.moveSelectedToPage(otherId);
+
+		expect(appStore.findElement(otherId, a)).toMatchObject({ x: 400 }); // right edge at 500
+	});
+});

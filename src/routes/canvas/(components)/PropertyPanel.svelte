@@ -5,6 +5,7 @@
 	import { Group, Trash2, Ungroup } from '@lucide/svelte';
 	import PositionSize from './property-panels/PositionSize.svelte';
 	import Layering from './property-panels/Layering.svelte';
+	import MoveToPage from './property-panels/MoveToPage.svelte';
 	import TextProperties from './property-panels/TextProperties.svelte';
 	import ShapeProperties from './property-panels/ShapeProperties.svelte';
 	import ImageProperties from './property-panels/ImageProperties.svelte';
@@ -53,6 +54,7 @@
 					onChange={handlePropertyChange}
 				/>
 				<Layering element={selectedElement} />
+				<MoveToPage />
 
 				{#if selectedElement.type === 'text'}
 					<TextProperties element={selectedElement} onChange={handlePropertyChange} />
@@ -112,6 +114,7 @@
 						Ungroup
 					</Button>
 				{/if}
+				<MoveToPage />
 				<Button
 					data-testid="delete-selected-btn"
 					onClick={() =>
