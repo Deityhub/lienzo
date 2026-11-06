@@ -7,6 +7,10 @@ const { version } = JSON.parse(readFileSync('./package.json', 'utf-8'));
 
 export default defineConfig({
 	plugins: [tailwindcss(), sveltekit()],
+	build: {
+		// The PDF library (~580 kB) is loaded on demand when exporting/importing a PDF, not on page load
+		chunkSizeWarningLimit: 650
+	},
 	define: { __APP_VERSION__: JSON.stringify(version) },
 	test: {
 		expect: { requireAssertions: true },

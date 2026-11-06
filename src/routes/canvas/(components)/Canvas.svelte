@@ -10,6 +10,14 @@
 		TCanvasInstance
 	} from '$lib/types/canvas';
 	import { pixelsToPercent } from '$lib/utils';
+	import {
+		constrainToBoundaries,
+		dragPosition,
+		dragPreviewRect,
+		findElementAt,
+		getOverlappingElements,
+		resizeRect
+	} from '$lib/utils/geometry';
 
 	const selectedElement = $derived(appStore.getSelectedElement());
 	const scale = $derived(appStore.getScale());
@@ -71,46 +79,10 @@
 	let dragStart = $state({ x: 0, y: 0 });
 	let isResizing = $state(false);
 
-	const SNAP_THRESHOLD = 10; // pixels
-
-	// Helper to check if two elements overlap
-	function elementsOverlap(
-		el1: { x: number; y: number; width: number; height: number },
-		el2: { x: number; y: number; width: number; height: number }
-	): boolean {
-		return !(
-			el1.x + el1.width < el2.x ||
-			el2.x + el2.width < el1.x ||
-			el1.y + el1.height < el2.y ||
-			el2.y + el2.height < el1.y
-		);
-	}
-
-	// Get elements that overlap with the given element
-	function getOverlappingElements(element: TCanvasElement): TCanvasElement[] {
-		return Object.values(page.elements).filter(
-			(el) => el.id !== element.id && elementsOverlap(element, el)
-		);
-	}
-
-	// Find which element (if any) contains the given point
-	function findElementAtPosition(x: number, y: number, excludeId?: string): TCanvasElement | null {
-		// Sort by zIndex descending to check top elements first
-		const sorted = [...Object.values(page.elements)].sort((a, b) => b.zIndex - a.zIndex);
-
-		for (const el of sorted) {
-			if (el.id === excludeId) continue;
-			if (x >= el.x && x <= el.x + el.width && y >= el.y && y <= el.y + el.height) {
-				return el;
-			}
-		}
-		return null;
-	}
-
 	// Update highlighted elements when selection changes
 	$effect(() => {
 		if (selectedElement && selectedElement.pageId === page.id) {
-			const overlapping = getOverlappingElements(selectedElement);
+			const overlapping = getOverlappingElements(selectedElement, Object.values(page.elements));
 			highlightedElementIds = overlapping.map((el) => el.id);
 		} else {
 			highlightedElementIds = [];
@@ -119,67 +91,19 @@
 
 	// Constrain all elements to boundaries when boundaries change
 	function constrainElementsToBoundaries() {
-		const { horizontal, vertical } = page.boundaries;
-		const elements = Object.values(page.elements);
-
-		elements.forEach((element) => {
-			let newX = element.x;
-			let newY = element.y;
-			let newWidth = element.width;
-			let newHeight = element.height;
-
-			const maxWidth = horizontal.end - horizontal.start;
-			const maxHeight = vertical.end - vertical.start;
-
-			// Ensure size stays within allowed range
-			if (newWidth > maxWidth) {
-				newWidth = maxWidth;
-			}
-			if (newHeight > maxHeight) {
-				newHeight = maxHeight;
-			}
-
-			// Ensure minimum size
-			if (newWidth < 20) {
-				newWidth = 20;
-			}
-			if (newHeight < 20) {
-				newHeight = 20;
-			}
-
-			// Constrain position to boundaries (similar to enforceBoundaries)
-			if (newX < horizontal.start) {
-				newX = horizontal.start;
-			}
-			if (newY < vertical.start) {
-				newY = vertical.start;
-			}
-			if (newX + newWidth > horizontal.end) {
-				newX = horizontal.end - newWidth;
-			}
-			if (newY + newHeight > vertical.end) {
-				newY = vertical.end - newHeight;
-			}
+		for (const element of Object.values(page.elements)) {
+			const next = constrainToBoundaries(element, page.boundaries);
 
 			// Only update if something actually changed to avoid unnecessary re-renders
 			if (
-				newX !== element.x ||
-				newY !== element.y ||
-				newWidth !== element.width ||
-				newHeight !== element.height
+				next.x !== element.x ||
+				next.y !== element.y ||
+				next.width !== element.width ||
+				next.height !== element.height
 			) {
-				appStore.updateElement({
-					elementId: element.id,
-					updates: {
-						x: newX,
-						y: newY,
-						width: newWidth,
-						height: newHeight
-					},
-					pageId: element.pageId
-				});
+				appStore.updateElement({ elementId: element.id, updates: next, pageId: element.pageId });
 			}
-		});
+		}
 	}
 
 	// Watch for boundary changes and constrain elements
@@ -213,33 +137,6 @@
 		};
 	});
 
-	// Snap position to ruler boundaries
-	function snapToBoundaries(value: number, start: number, end: number): number {
-		if (Math.abs(value - start) < SNAP_THRESHOLD) {
-			return start;
-		}
-		if (Math.abs(value - end) < SNAP_THRESHOLD) {
-			return end;
-		}
-		return value;
-	}
-
-	// Enforce boundaries
-	function enforceBoundaries(
-		x: number,
-		y: number,
-		elementWidth: number,
-		elementHeight: number
-	): { x: number; y: number } {
-		const { horizontal, vertical } = page.boundaries;
-
-		// Clamp position to boundaries
-		const clampedX = Math.max(horizontal.start, Math.min(x, horizontal.end - elementWidth));
-		const clampedY = Math.max(vertical.start, Math.min(y, vertical.end - elementHeight));
-
-		return { x: clampedX, y: clampedY };
-	}
-
 	function handleCanvasClick(event: MouseEvent) {
 		if (event.target === canvasRef) {
 			appStore.selectElement(null);
@@ -260,9 +157,11 @@
 		// Lookup the latest element state from store to finalize and reparent
 		const latest = appStore.findElement(dragMeta.pageId, dragMeta.id);
 		if (latest) {
-			const centerX = latest.x + latest.width / 2;
-			const centerY = latest.y + latest.height / 2;
-			const newParentElement = findElementAtPosition(centerX, centerY, latest.id);
+			const newParentElement = findElementAt(
+				Object.values(page.elements),
+				{ x: latest.x + latest.width / 2, y: latest.y + latest.height / 2 },
+				latest.id
+			);
 			const newParentId = newParentElement ? newParentElement.id : null;
 
 			appStore.moveElement({
@@ -347,99 +246,51 @@
 		document.body.style.touchAction = 'none';
 	}
 
+	// Move the dragged element to the latest pointer position, at most once per animation frame
+	function scheduleDragUpdate() {
+		if (dragRafId !== null) return;
+		dragRafId = requestAnimationFrame(() => {
+			dragRafId = null;
+			if (!isDragging || !dragMeta) return;
+
+			const rect = canvasRef.getBoundingClientRect();
+			const delta = {
+				x: (lastPointer.x - dragStart.x) * (width / rect.width),
+				y: (lastPointer.y - dragStart.y) * (height / rect.height)
+			};
+			const size = { width: dragMeta.width, height: dragMeta.height };
+			const position = dragPosition(
+				{ x: dragMeta.startX, y: dragMeta.startY },
+				delta,
+				size,
+				page.boundaries
+			);
+
+			// The element under the dragged element's center is the future parent
+			const parent = findElementAt(
+				Object.values(page.elements),
+				{ x: position.x + size.width / 2, y: position.y + size.height / 2 },
+				dragMeta.id
+			);
+			hoveredElementId = parent ? parent.id : null;
+
+			appStore.updateElement({
+				elementId: dragMeta.id,
+				updates: position,
+				pageId: dragMeta.pageId
+			});
+		});
+	}
+
 	function handleTouchMove(e: TouchEvent) {
 		if (!isDragging || !dragMeta) return;
-
-		const touch = e.touches[0];
-		lastPointer = { x: touch.clientX, y: touch.clientY };
-
-		// rAF throttle
-		if (dragRafId === null) {
-			dragRafId = requestAnimationFrame(() => {
-				dragRafId = null;
-				if (!isDragging || !dragMeta) return;
-
-				const rect = canvasRef.getBoundingClientRect();
-				const scaleX = width / rect.width;
-				const scaleY = height / rect.height;
-
-				const deltaX = (lastPointer.x - dragStart.x) * scaleX;
-				const deltaY = (lastPointer.y - dragStart.y) * scaleY;
-
-				let newX = dragMeta.startX + deltaX;
-				let newY = dragMeta.startY + deltaY;
-
-				// Snap and enforce boundaries
-				newX = snapToBoundaries(
-					newX,
-					page.boundaries.horizontal.start,
-					page.boundaries.horizontal.end - dragMeta.width
-				);
-				newY = snapToBoundaries(
-					newY,
-					page.boundaries.vertical.start,
-					page.boundaries.vertical.end - dragMeta.height
-				);
-
-				const bounded = {
-					x: newX,
-					y: newY
-				};
-
-				appStore.updateElement({
-					elementId: dragMeta.id,
-					updates: { x: bounded.x, y: bounded.y },
-					pageId: dragMeta.pageId
-				});
-			});
-		}
+		lastPointer = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+		scheduleDragUpdate();
 	}
 
 	function handleGlobalPointerMove(e: PointerEvent) {
 		lastPointer = { x: e.clientX, y: e.clientY };
-		// rAF throttle
-		if (dragRafId === null) {
-			dragRafId = requestAnimationFrame(() => {
-				dragRafId = null;
-				if (!isDragging || !dragMeta) return;
-
-				const rect = canvasRef.getBoundingClientRect();
-				const scaleX = width / rect.width;
-				const scaleY = height / rect.height;
-
-				const deltaX = (lastPointer.x - dragStart.x) * scaleX;
-				const deltaY = (lastPointer.y - dragStart.y) * scaleY;
-
-				let newX = dragMeta.startX + deltaX;
-				let newY = dragMeta.startY + deltaY;
-
-				// Snap and enforce boundaries
-				newX = snapToBoundaries(
-					newX,
-					page.boundaries.horizontal.start,
-					page.boundaries.horizontal.end - dragMeta.width
-				);
-				newY = snapToBoundaries(
-					newY,
-					page.boundaries.vertical.start,
-					page.boundaries.vertical.end - dragMeta.height
-				);
-				const bounded = enforceBoundaries(newX, newY, dragMeta.width, dragMeta.height);
-
-				// Hover state based on center
-				const centerX = bounded.x + dragMeta.width / 2;
-				const centerY = bounded.y + dragMeta.height / 2;
-				const newParentElement = findElementAtPosition(centerX, centerY, dragMeta.id);
-				hoveredElementId = newParentElement ? newParentElement.id : null;
-
-				// Update element position
-				appStore.updateElement({
-					elementId: dragMeta.id,
-					updates: { x: bounded.x, y: bounded.y },
-					pageId: dragMeta.pageId
-				});
-			});
-		}
+		scheduleDragUpdate();
 	}
 
 	function handleElementResizeAnimationFrame({
@@ -462,64 +313,16 @@
 		last: { x: number; y: number };
 	}) {
 		return requestAnimationFrame(() => {
-			const deltaX = (last.x - startX) * scaleX;
-			const deltaY = (last.y - startY) * scaleY;
-
-			let newWidth = startState.w;
-			let newHeight = startState.h;
-			let newX = startState.x;
-			let newY = startState.y;
-
-			const { horizontal, vertical } = page.boundaries;
-
-			switch (direction) {
-				case 'e':
-					newWidth = Math.max(20, startState.w + deltaX);
-					break;
-				case 'w':
-					newWidth = Math.max(20, startState.w - deltaX);
-					newX = Math.max(horizontal.start, startState.x + deltaX);
-					break;
-				case 's':
-					newHeight = Math.max(20, startState.h + deltaY);
-					break;
-				case 'n':
-					newHeight = Math.max(20, startState.h - deltaY);
-					newY = Math.max(vertical.start, startState.y + deltaY);
-					break;
-				case 'se':
-					newWidth = Math.max(20, startState.w + deltaX);
-					newHeight = Math.max(20, startState.h + deltaY);
-					break;
-				case 'sw':
-					newWidth = Math.max(20, startState.w - deltaX);
-					newX = Math.max(horizontal.start, startState.x + deltaX);
-					newHeight = Math.max(20, startState.h + deltaY);
-					break;
-				case 'ne':
-					newWidth = Math.max(20, startState.w + deltaX);
-					newHeight = Math.max(20, startState.h - deltaY);
-					newY = Math.max(vertical.start, startState.y + deltaY);
-					break;
-				case 'nw':
-					newWidth = Math.max(20, startState.w - deltaX);
-					newX = Math.max(horizontal.start, startState.x + deltaX);
-					newHeight = Math.max(20, startState.h - deltaY);
-					newY = Math.max(vertical.start, startState.y + deltaY);
-					break;
-			}
-
-			// Enforce boundaries
-			if (newX + newWidth > horizontal.end) {
-				newWidth = horizontal.end - newX;
-			}
-			if (newY + newHeight > vertical.end) {
-				newHeight = vertical.end - newY;
-			}
+			const next = resizeRect(
+				{ x: startState.x, y: startState.y, width: startState.w, height: startState.h },
+				direction,
+				{ x: (last.x - startX) * scaleX, y: (last.y - startY) * scaleY },
+				page.boundaries
+			);
 
 			appStore.updateElement({
 				elementId: element.id,
-				updates: { x: newX, y: newY, width: newWidth, height: newHeight },
+				updates: next,
 				pageId: element.pageId
 			});
 		});
@@ -640,51 +443,17 @@
 		if (!canvasRef) return;
 
 		const rect = canvasRef.getBoundingClientRect();
-		const scaleX = width / rect.width;
-		const scaleY = height / rect.height;
+		const pointer = {
+			x: (event.clientX - rect.left) * (width / rect.width),
+			y: (event.clientY - rect.top) * (height / rect.height)
+		};
 
-		let x = (event.clientX - rect.left) * scaleX;
-		let y = (event.clientY - rect.top) * scaleY;
+		const preview = dragPreviewRect(pointer, page.boundaries);
+		dragPreview = preview;
 
-		const { horizontal, vertical } = page.boundaries;
-
-		// Calculate dynamic dimensions
-		let previewWidth = horizontal.end - x;
-		let previewHeight = Math.min(500, vertical.end - y);
-
-		const MIN_WIDTH = 100;
-		const MIN_HEIGHT = 50;
-
-		if (previewWidth < MIN_WIDTH) {
-			previewWidth = Math.min(MIN_WIDTH, horizontal.end - horizontal.start);
-		}
-		if (previewHeight < MIN_HEIGHT) {
-			previewHeight = Math.min(MIN_HEIGHT, vertical.end - vertical.start);
-		}
-
-		// Clamp to boundaries
-		x = Math.max(horizontal.start, Math.min(x, horizontal.end - previewWidth));
-		y = Math.max(vertical.start, Math.min(y, vertical.end - previewHeight));
-
-		dragPreview = { x, y, width: previewWidth, height: previewHeight };
-
-		// Check for hovered element
-		let foundHover = false;
-		for (const element of Object.values(page.elements)) {
-			if (
-				x >= element.x &&
-				x <= element.x + element.width &&
-				y >= element.y &&
-				y <= element.y + element.height
-			) {
-				hoveredElementId = element.id;
-				foundHover = true;
-				break;
-			}
-		}
-		if (!foundHover) {
-			hoveredElementId = null;
-		}
+		// Highlight the element the new one would be dropped into
+		const hovered = findElementAt(Object.values(page.elements), preview);
+		hoveredElementId = hovered ? hovered.id : null;
 	}
 
 	export function clearDragPreview() {
