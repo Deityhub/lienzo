@@ -40,11 +40,12 @@ async function exportPdf(page: Page): Promise<string> {
 	await expect(page.locator('textarea')).toHaveValue('Editable headline');
 
 	await page.getByTestId('export-btn').click();
-	await page.getByRole('dialog').getByRole('button', { name: 'Preview PDF' }).click();
 	const download = page.waitForEvent('download');
 	await page.getByRole('dialog').getByRole('button', { name: 'Export PDF' }).click();
 
 	const file = await download;
+	await expect(page.getByTestId('export-done')).toContainText('PDF Resume.pdf was saved');
+	await page.getByRole('dialog').getByRole('button', { name: 'Close' }).click();
 	expect(file.suggestedFilename()).toBe('PDF Resume.pdf');
 	return (await file.path())!;
 }

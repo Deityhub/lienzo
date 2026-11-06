@@ -41,11 +41,12 @@
 		...restProps
 	}: ButtonProps = $props();
 
-	const baseClasses = `inline-flex items-center justify-center font-medium rounded transition-colors ${variant !== 'text' && variant !== 'ghost' ? `focus:outline-none` : ''}`;
+	const baseClasses = `inline-flex items-center justify-center font-semibold rounded transition-colors ${variant !== 'text' && variant !== 'ghost' ? `focus:outline-none` : ''}`;
 
 	const variantClasses: Record<ButtonVariant, string> = {
 		primary: 'bg-primary text-primary-foreground hover:bg-primary-dark',
-		secondary: 'border-2 border-primary text-primary-text hover:bg-primary/10',
+		secondary:
+			'border border-input text-foreground hover:bg-accent aria-pressed:border-primary aria-pressed:bg-primary-light aria-pressed:text-primary-text',
 		'secondary-destructive':
 			'border-2 border-destructive text-destructive-text hover:bg-destructive/10',
 		destructive: 'bg-destructive text-destructive-foreground hover:bg-destructive-dark',

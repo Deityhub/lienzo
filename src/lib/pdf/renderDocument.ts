@@ -301,7 +301,9 @@ export interface RenderResult {
 export async function renderDocumentPdf(
 	doc: DocumentData,
 	documentJson: string,
-	title: string
+	title: string,
+	/** Called before the first page and after each page, to show progress */
+	onProgress?: (pagesDone: number, pageCount: number) => void
 ): Promise<RenderResult> {
 	const warnings: string[] = [];
 	const pdf = await createPdf(title);
@@ -326,7 +328,9 @@ export async function renderDocumentPdf(
 		return result;
 	};
 
-	for (const source of Object.values(doc.pages)) {
+	const sources = Object.values(doc.pages);
+	onProgress?.(0, sources.length);
+	for (const source of sources) {
 		const page = pdf.addPage([PAGE_W, PAGE_H]);
 		// Elements stack by zIndex, like in the editor
 		const elements = Object.values(source.elements).sort((a, b) => a.zIndex - b.zIndex);
@@ -340,6 +344,7 @@ export async function renderDocumentPdf(
 				warnings.push(`An element (${el.type}) could not be drawn.`);
 			}
 		}
+		onProgress?.(pdf.getPageCount(), sources.length);
 	}
 
 	return { bytes: await finishPdf(pdf, documentJson), warnings: [...new Set(warnings)] };
