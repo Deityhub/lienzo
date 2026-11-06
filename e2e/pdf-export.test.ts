@@ -122,7 +122,6 @@ test('exports a PDF with real text, vector shapes and a single image', async ({ 
 	await expect(page.locator('textarea').first()).toBeVisible();
 
 	await page.getByTestId('export-btn').click();
-	await page.getByRole('dialog').getByRole('button', { name: 'Preview PDF' }).click();
 	const download = page.waitForEvent('download');
 	await page.getByRole('dialog').getByRole('button', { name: 'Export PDF' }).click();
 	const file = await download;
@@ -169,16 +168,10 @@ test('tells the user when an image cannot be included, and still exports the res
 	await page.getByRole('button', { name: 'Edit' }).click();
 	await expect(page.locator('textarea').first()).toBeVisible();
 
-	const dialogs: string[] = [];
-	page.on('dialog', (d) => {
-		dialogs.push(d.message());
-		void d.dismiss();
-	});
 	await page.getByTestId('export-btn').click();
-	await page.getByRole('dialog').getByRole('button', { name: 'Preview PDF' }).click();
 	const download = page.waitForEvent('download');
 	await page.getByRole('dialog').getByRole('button', { name: 'Export PDF' }).click();
 	await download;
 
-	await expect.poll(() => dialogs.join('\n')).toContain('could not be included');
+	await expect(page.getByTestId('export-warning')).toContainText('could not be included');
 });
