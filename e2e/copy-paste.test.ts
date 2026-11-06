@@ -125,9 +125,7 @@ test.describe('Copy and paste', () => {
 		await onPage(page, 'p1').first().click();
 		await page.keyboard.press('ControlOrMeta+c');
 
-		await page
-			.locator('[data-page-id="p2"] [data-testid="document-canvas"]')
-			.click({ position: { x: 20, y: 20 } });
+		await page.locator('[data-page-id="p2"] [data-testid="document-canvas"]').click();
 		await page.keyboard.press('ControlOrMeta+v');
 
 		await expect(onPage(page, 'p2')).toHaveCount(1);
@@ -144,9 +142,7 @@ test.describe('Copy and paste', () => {
 		await expect(onPage(page, 'p1')).toHaveCount(3);
 
 		await page.getByTestId('copy-btn').click();
-		await page
-			.locator('[data-page-id="p2"] [data-testid="document-canvas"]')
-			.click({ position: { x: 20, y: 20 } });
+		await page.locator('[data-page-id="p2"] [data-testid="document-canvas"]').click();
 		await page.getByTestId('paste-btn').click();
 		await expect(onPage(page, 'p2')).toHaveCount(1);
 		await expect(onPage(page, 'p1')).toHaveCount(3);
@@ -183,9 +179,7 @@ test.describe('Copy and paste', () => {
 
 	test('a picture pasted from the clipboard becomes an image element', async ({ page }) => {
 		await openEditor(page);
-		await page
-			.locator('[data-page-id="p2"] [data-testid="document-canvas"]')
-			.click({ position: { x: 20, y: 20 } });
+		await page.locator('[data-page-id="p2"] [data-testid="document-canvas"]').click();
 
 		await page.evaluate(async () => {
 			// A 300x150 picture, as a screenshot would be
@@ -227,7 +221,7 @@ test.describe('Copy and paste', () => {
 		const other = await context.newPage();
 		await other.goto('/canvas');
 		await other.waitForLoadState('networkidle');
-		await other.getByTestId('document-canvas').click({ position: { x: 20, y: 20 } });
+		await other.getByTestId('document-canvas').click();
 		await other.keyboard.press('ControlOrMeta+v');
 
 		await expect(other.locator('[data-testid="document-canvas"] > .cursor-move')).toHaveCount(1);
