@@ -31,7 +31,7 @@ ${background ? `<rect width="32" height="32" rx="${rx}" fill="${background}"/>` 
 }
 
 /** The browser-tab icon: blue on a light tab bar, white on a dark one */
-const faviconSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="1 1 22 22" width="32" height="32">
+const faviconSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="32" height="32">
 <style>.l{stroke:${BRAND}}.f{fill:${BRAND}}@media (prefers-color-scheme:dark){.l{stroke:#ffffff}.f{fill:#ffffff}}</style>
 <g class="l">
 <path class="f" d="M12 2L2 7L12 12L22 7L12 2Z" stroke-linejoin="round"/>

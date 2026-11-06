@@ -18,23 +18,50 @@ test.describe('Theme', () => {
 		}
 	});
 
-	test('the switch changes the theme, and the choice survives a reload', async ({ page }) => {
+	test('one button cycles System, Light, Dark, and the choice survives a reload', async ({
+		page
+	}) => {
 		await page.goto('/');
 		await page.waitForLoadState('networkidle');
 		const toggle = page.getByTestId('theme-toggle');
-		await expect(toggle).toHaveAttribute('role', 'switch');
-		await expect(toggle).toHaveAttribute('aria-checked', 'false');
+		await expect(toggle).toHaveAttribute('data-theme-preference', 'system');
 
 		await toggle.click();
-		await expect(toggle).toHaveAttribute('aria-checked', 'true');
+		await expect(toggle).toHaveAttribute('data-theme-preference', 'light');
+		expect(await isDark(page)).toBe(false);
+
+		await toggle.click();
+		await expect(toggle).toHaveAttribute('data-theme-preference', 'dark');
 		expect(await isDark(page)).toBe(true);
 
 		await page.reload();
 		expect(await isDark(page)).toBe(true); // applied before the first paint, not after hydration
-		await expect(page.getByTestId('theme-toggle')).toHaveAttribute('aria-checked', 'true');
+		await expect(page.getByTestId('theme-toggle')).toHaveAttribute('data-theme-preference', 'dark');
 
 		await page.getByTestId('theme-toggle').click();
-		expect(await isDark(page)).toBe(false);
+		await expect(page.getByTestId('theme-toggle')).toHaveAttribute(
+			'data-theme-preference',
+			'system'
+		);
+	});
+
+	test('System follows the device, live', async ({ browser }) => {
+		const context = await browser.newContext({ colorScheme: 'dark' });
+		await context.addInitScript(() => localStorage.setItem('lienzo-theme', 'light'));
+		const page = await context.newPage();
+		await page.goto('/');
+		await page.waitForLoadState('networkidle');
+		expect(await isDark(page)).toBe(false); // the saved choice wins
+
+		const toggle = page.getByTestId('theme-toggle');
+		await toggle.click(); // light -> dark
+		await toggle.click(); // dark -> system
+		await expect(toggle).toHaveAttribute('data-theme-preference', 'system');
+		expect(await isDark(page)).toBe(true); // the device is dark
+
+		await page.emulateMedia({ colorScheme: 'light' });
+		await expect.poll(() => isDark(page)).toBe(false); // and it keeps following it
+		await context.close();
 	});
 
 	test('a saved choice wins over the system setting', async ({ browser }) => {
