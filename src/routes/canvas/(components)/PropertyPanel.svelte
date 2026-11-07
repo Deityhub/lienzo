@@ -1,32 +1,31 @@
 <script lang="ts">
-	import {
-		fontFamilies,
-		fontSizes,
-		fontWeights,
-		fontStyles,
-		textDecorations,
-		textTransforms,
-		textAlignments
-	} from '$lib/const/font';
-	import { shapeTypes, strokeStyles } from '$lib/const/shape';
-	import { objectFitOptions, borderStyles } from '$lib/const/image';
 	import { appStore } from '$lib/stores/appStore.svelte.ts';
-	import { CANVAS_WIDTH, CANVAS_HEIGHT } from '$lib/const/dimension';
 	import { slide } from 'svelte/transition';
 	import Button from '$lib/components/Button.svelte';
-	import { Trash2 } from '@lucide/svelte';
-	import { NumberInput, Select, ColorInput, Input } from '$lib/components';
+	import { ChevronUp, Group, Trash2, Ungroup } from '@lucide/svelte';
+	import PositionSize from './property-panels/PositionSize.svelte';
+	import Layering from './property-panels/Layering.svelte';
+	import MoveToPage from './property-panels/MoveToPage.svelte';
+	import ClipboardActions from './property-panels/ClipboardActions.svelte';
+	import TextProperties from './property-panels/TextProperties.svelte';
+	import ShapeProperties from './property-panels/ShapeProperties.svelte';
+	import ImageProperties from './property-panels/ImageProperties.svelte';
 
 	const selectedElement = $derived(appStore.getSelectedElement());
+	const selectedElements = $derived(appStore.getSelectedElements());
+	// Everything selected is one group
+	const isOneGroup = $derived(
+		selectedElements.length > 1 &&
+			selectedElements.every((el) => el.groupId && el.groupId === selectedElements[0].groupId)
+	);
+	const hasGroups = $derived(selectedElements.some((el) => el.groupId));
+	// On a phone the panel is a sheet at the bottom: just its title until it is opened
+	let expanded = $state(false);
+	const body = $derived(expanded ? '' : 'max-lg:hidden');
 	const pages = $derived(appStore.getPages());
 	const currentPage = $derived(selectedElement ? pages[selectedElement.pageId] : undefined);
 
-	const minX = $derived(currentPage ? currentPage.boundaries.horizontal.start : 0);
-	const maxX = $derived(currentPage ? currentPage.boundaries.horizontal.end : CANVAS_WIDTH);
-	const minY = $derived(currentPage ? currentPage.boundaries.vertical.start : 0);
-	const maxY = $derived(currentPage ? currentPage.boundaries.vertical.end : CANVAS_HEIGHT);
-
-	function handlePropertyChange(property: string, value: string | number | object) {
+	function handlePropertyChange(property: string, value: string | number) {
 		if (!selectedElement) return;
 
 		appStore.updateElement({
@@ -37,437 +36,124 @@
 	}
 </script>
 
-{#if selectedElement}
+{#snippet header(title: string)}
+	<div class="flex items-center justify-between gap-2 border-b border-border max-lg:py-2 lg:pb-4">
+		<h3
+			class="text-base leading-6 font-semibold text-foreground"
+			data-testid="property-panel-title"
+		>
+			{title}
+		</h3>
+		<button
+			type="button"
+			class="inline-flex h-11 w-11 cursor-pointer items-center justify-center rounded text-foreground hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none lg:hidden"
+			aria-expanded={expanded}
+			aria-label={expanded ? 'Hide properties' : 'Show properties'}
+			data-testid="property-panel-toggle"
+			onclick={() => (expanded = !expanded)}
+		>
+			<ChevronUp
+				class="h-5 w-5 transition-transform {expanded ? 'rotate-180' : ''}"
+				aria-hidden="true"
+			/>
+		</button>
+	</div>
+{/snippet}
+
+{#if selectedElement || selectedElements.length > 1}
+	<!-- One panel for one or several selected elements, so it does not slide out and in when the selection changes -->
 	<div
 		transition:slide={{ duration: 300, axis: 'x' }}
-		class="w-80 overflow-y-auto border-l border-border bg-background p-4 max-lg:absolute max-lg:bottom-0 max-lg:left-0 max-lg:z-9999 max-lg:h-[15vh] max-lg:w-full max-lg:overflow-y-hidden lg:pt-30"
+		class="w-80 overflow-y-auto border-l border-border bg-background px-5 pb-2 max-lg:absolute max-lg:bottom-0 max-lg:left-0 max-lg:z-9999 max-lg:max-h-[55vh] max-lg:w-full max-lg:rounded-t-xl max-lg:border-t max-lg:border-l-0 max-lg:px-4 max-lg:shadow-[0_-8px_24px_rgba(0,0,0,0.18)] max-md:bottom-16 lg:pt-30"
 		data-testid="property-panel"
 	>
-		<div class="mb-6 space-y-4 max-lg:flex max-lg:items-center max-lg:gap-2">
-			<h3
-				class="mb-4 text-lg font-semibold text-foreground max-lg:hidden"
-				data-testid="property-panel-title"
-			>
-				{selectedElement.type.charAt(0).toUpperCase() + selectedElement.type.slice(1)} Properties
-			</h3>
+		{#if selectedElement}
+			{@render header(
+				`${selectedElement.type.charAt(0).toUpperCase() + selectedElement.type.slice(1)} Properties`
+			)}
+			<div class={body}>
+				<PositionSize
+					element={selectedElement}
+					boundaries={currentPage?.boundaries}
+					onChange={handlePropertyChange}
+				/>
+				<Layering element={selectedElement} />
+				<ClipboardActions />
+				<MoveToPage />
 
-			<!-- Position and Size -->
-			<div class="space-y-2">
-				<h4 class="font-medium text-foreground">Position & Size</h4>
-				<div class="grid grid-cols-2 gap-2 max-lg:flex">
-					<div class="max-lg:min-w-[10rem]">
-						<NumberInput
-							value={selectedElement.x}
-							handleInput={(value) => handlePropertyChange('x', value)}
-							min={minX}
-							max={maxX}
-							testId="input-x"
-							label="X"
-						/>
-					</div>
-					<div class="max-lg:min-w-[10rem]">
-						<NumberInput
-							value={selectedElement.y}
-							handleInput={(value) => handlePropertyChange('y', value)}
-							min={minY}
-							max={maxY}
-							testId="input-y"
-							label="Y"
-						/>
-					</div>
-					<div class="max-lg:min-w-[10rem]">
-						<NumberInput
-							value={selectedElement.width}
-							handleInput={(value) => handlePropertyChange('width', value)}
-							testId="input-width"
-							label="Width"
-						/>
-					</div>
-					<div class="max-lg:min-w-[10rem]">
-						<NumberInput
-							value={selectedElement.height}
-							handleInput={(value) => handlePropertyChange('height', value)}
-							testId="input-height"
-							label="Height"
-						/>
-					</div>
-				</div>
-			</div>
+				{#if selectedElement.type === 'text'}
+					<TextProperties element={selectedElement} onChange={handlePropertyChange} />
+				{:else if selectedElement.type === 'shape'}
+					<ShapeProperties element={selectedElement} onChange={handlePropertyChange} />
+				{:else if selectedElement.type === 'image'}
+					<ImageProperties element={selectedElement} onChange={handlePropertyChange} />
+				{/if}
 
-			<!-- Layering -->
-			<div class="space-y-2">
-				<h4 class="font-medium text-foreground">Element Layering</h4>
-				<div class="flex items-center gap-2">
-					<span class="text-background-foreground block text-sm"
-						>Z-Index Layer: {selectedElement.zIndex}</span
-					>
-				</div>
-				<div class="flex gap-2">
+				<!-- Delete Button -->
+				<div class="py-4">
 					<Button
-						data-testid="bring-forward-btn"
-						onClick={() => appStore.moveForward(selectedElement.id, selectedElement.pageId)}
-						size="xs"
-						disabled={selectedElement.zIndex >=
-							appStore.getPageElements(selectedElement.pageId).length - 1}
-						className="max-lg:min-w-[8rem]"
+						data-testid="delete-element-btn"
+						onClick={() => appStore.deleteElement(selectedElement.id, selectedElement.pageId)}
+						variant="secondary-destructive"
+						fullWidth
 					>
-						Move Forward
-					</Button>
-					<Button
-						data-testid="send-backward-btn"
-						onClick={() => appStore.moveBackward(selectedElement.id, selectedElement.pageId)}
-						size="xs"
-						disabled={selectedElement.zIndex <= 0}
-						className="max-lg:min-w-[8rem]"
-					>
-						Move Backward
+						<Trash2 class="mr-2 h-4 w-4" />
+						Delete Element
 					</Button>
 				</div>
 			</div>
-
-			<!-- Text Properties -->
-			{#if selectedElement.type === 'text'}
-				<div class="space-y-2">
-					<h4 class="font-medium text-foreground">Text Properties</h4>
-					<div class="flex flex-col gap-2 max-lg:flex-row">
-						<div class="max-lg:min-w-[10rem]">
-							<Select
-								value={selectedElement.fontFamily}
-								onChange={(value) => handlePropertyChange('fontFamily', value)}
-								testId="select-font-family"
-								options={fontFamilies.map((font) => ({
-									value: font,
-									label: font,
-									fontFamily: font
-								}))}
-								label="Font Family"
-							/>
-						</div>
-						<div class="max-lg:min-w-[10rem]">
-							<NumberInput
-								value={selectedElement.fontSize}
-								handleInput={(value) => handlePropertyChange('fontSize', value)}
-								options={fontSizes.map((size) => ({ label: size.toString(), value: size }))}
-								testId="select-font-size"
-								label="Font Size"
-							/>
-						</div>
-						<div class="max-lg:min-w-[10rem]">
-							<Select
-								value={selectedElement.fontWeight}
-								onChange={(value) => handlePropertyChange('fontWeight', value)}
-								testId="select-font-weight"
-								options={[...fontWeights]}
-								label="Font Weight"
-							/>
-						</div>
-						<div class="max-lg:min-w-[10rem]">
-							<Select
-								value={selectedElement.fontStyle}
-								onChange={(value) => handlePropertyChange('fontStyle', value)}
-								testId="select-font-style"
-								options={[...fontStyles]}
-								label="Font Style"
-							/>
-						</div>
-						<div class="max-lg:min-w-[10rem]">
-							<Select
-								value={selectedElement.textDecoration || 'none'}
-								onChange={(value) => handlePropertyChange('textDecoration', value)}
-								testId="select-text-decoration"
-								options={[...textDecorations]}
-								label="Text Decoration"
-							/>
-						</div>
-						<div class="max-lg:min-w-[10rem]">
-							<Select
-								value={selectedElement.textTransform || 'none'}
-								onChange={(value) => handlePropertyChange('textTransform', value)}
-								testId="select-text-transform"
-								options={[...textTransforms]}
-								label="Text Transform"
-							/>
-						</div>
-						<div class="max-lg:min-w-[10rem]">
-							<ColorInput
-								value={selectedElement.color}
-								onChange={(value) => handlePropertyChange('color', value)}
-								testId="input-color"
-								label="Color"
-							/>
-						</div>
-						<div class="max-lg:min-w-[10rem]">
-							<ColorInput
-								value={selectedElement.backgroundColor || '#ffffff'}
-								onChange={(value) => handlePropertyChange('backgroundColor', value)}
-								testId="input-background-color"
-								label="Background Color"
-							/>
-						</div>
-						<div class="max-lg:min-w-[10rem]">
-							<span class="text-background-foreground block text-sm">Background Opacity</span>
-							<input
-								data-testid="input-fill-opacity"
-								type="range"
-								min="0"
-								max="1"
-								step="0.1"
-								value={selectedElement.backgroundOpacity || 0}
-								class="w-full"
-								oninput={(e) =>
-									handlePropertyChange('backgroundOpacity', parseFloat(e.currentTarget.value))}
-							/>
-							<span class="text-background-foreground block text-sm"
-								>{((selectedElement.backgroundOpacity || 0) * 100).toFixed(0)}%</span
-							>
-						</div>
-						<div class="max-lg:min-w-[10rem]">
-							<Select
-								value={selectedElement.textAlign || 'left'}
-								onChange={(value) => handlePropertyChange('textAlign', value)}
-								testId="select-text-alignment"
-								options={[...textAlignments]}
-								label="Text Alignment"
-							/>
-						</div>
-					</div>
+		{:else}
+			{@render header(
+				`${isOneGroup ? 'Group of' : ''} ${selectedElements.length} ${isOneGroup ? 'elements' : 'elements selected'}`.trim()
+			)}
+			<div class="flex flex-col gap-4 pt-4 {body}">
+				<p class="text-sm text-muted-foreground">
+					{isOneGroup
+						? 'They are selected and moved together until you ungroup them.'
+						: 'Drag any of them to move them together, or group them to keep them together.'}
+				</p>
+				<div class="flex flex-wrap gap-2">
+					{#if !isOneGroup}
+						<Button
+							data-testid="group-btn"
+							onClick={() => appStore.groupSelected()}
+							variant="primary"
+							className="flex-1"
+						>
+							<Group class="mr-2 h-4 w-4" />
+							Group
+						</Button>
+					{/if}
+					{#if hasGroups}
+						<Button
+							data-testid="ungroup-btn"
+							onClick={() => appStore.ungroupSelected()}
+							variant="secondary"
+							className="flex-1"
+						>
+							<Ungroup class="mr-2 h-4 w-4" />
+							Ungroup
+						</Button>
+					{/if}
 				</div>
-			{/if}
-
-			<!-- Shape Properties -->
-			{#if selectedElement.type === 'shape'}
-				<div class="space-y-2">
-					<h4 class="font-medium text-foreground">Shape Properties</h4>
-					<div class="flex flex-col gap-2 max-lg:flex-row">
-						<div class="max-lg:min-w-[10rem]">
-							<Select
-								value={selectedElement.shapeType}
-								onChange={(value) => handlePropertyChange('shapeType', value)}
-								testId="select-shape-type"
-								options={[...shapeTypes]}
-								label="Shape Type"
-							/>
-						</div>
-						<div class="max-lg:min-w-[10rem]">
-							<ColorInput
-								value={selectedElement.strokeColor}
-								onChange={(value) => handlePropertyChange('strokeColor', value)}
-								testId="input-stroke-color"
-								label="Stroke Color"
-							/>
-						</div>
-						<div class="max-lg:min-w-[10rem]">
-							<span class="text-background-foreground block text-sm">Stroke Weight</span>
-							<NumberInput
-								value={selectedElement.strokeWidth}
-								handleInput={(value) => handlePropertyChange('strokeWidth', value)}
-								testId="input-stroke-weight"
-							/>
-						</div>
-						<div class="max-lg:min-w-[10rem]">
-							<Select
-								value={selectedElement.strokeStyle || 'solid'}
-								onChange={(value) => handlePropertyChange('strokeStyle', value)}
-								testId="select-stroke-style"
-								options={[...strokeStyles]}
-								label="Stroke Style"
-							/>
-						</div>
-						<div class="max-lg:min-w-[10rem]">
-							<span class="text-background-foreground block text-sm">Stroke Opacity</span>
-							<input
-								data-testid="input-stroke-opacity"
-								type="range"
-								min="0"
-								max="1"
-								step="0.1"
-								value={selectedElement.strokeOpacity || 1}
-								class="w-full"
-								oninput={(e) =>
-									handlePropertyChange('strokeOpacity', parseFloat(e.currentTarget.value))}
-							/>
-							<span class="text-background-foreground block text-sm"
-								>{((selectedElement.strokeOpacity || 1) * 100).toFixed(0)}%</span
-							>
-						</div>
-						<div class="max-lg:min-w-[10rem]">
-							<ColorInput
-								value={selectedElement.fillColor || '#ffffff'}
-								onChange={(value) => handlePropertyChange('fillColor', value)}
-								testId="input-fill-color"
-								label="Fill Color"
-							/>
-						</div>
-						<div class="max-lg:min-w-[10rem]">
-							<span class="text-background-foreground block text-sm">Fill Opacity</span>
-							<input
-								data-testid="input-fill-opacity"
-								type="range"
-								min="0"
-								max="1"
-								step="0.1"
-								value={selectedElement.fillOpacity || 0}
-								class="w-full"
-								oninput={(e) =>
-									handlePropertyChange('fillOpacity', parseFloat(e.currentTarget.value))}
-							/>
-							<span class="text-background-foreground block text-sm"
-								>{((selectedElement.fillOpacity || 0) * 100).toFixed(0)}%</span
-							>
-						</div>
-						{#if selectedElement.shapeType === 'rectangle'}
-							<div class="max-lg:min-w-[10rem]">
-								<span class="text-background-foreground block text-sm">Corner Radius</span>
-								<input
-									data-testid="input-corner-radius"
-									type="range"
-									min="0"
-									max="100"
-									value={selectedElement.cornerRadius || 0}
-									class="w-full"
-									oninput={(e) =>
-										handlePropertyChange('cornerRadius', parseInt(e.currentTarget.value))}
-								/>
-								<span class="text-background-foreground block text-sm"
-									>{selectedElement.cornerRadius || 0}%</span
-								>
-							</div>
-						{/if}
-						<div class="max-lg:min-w-[10rem]">
-							<span class="text-background-foreground block text-sm">Rotation</span>
-							<input
-								data-testid="input-rotation"
-								type="range"
-								min="0"
-								max="360"
-								value={selectedElement.rotation || 0}
-								class="w-full"
-								oninput={(e) => handlePropertyChange('rotation', parseInt(e.currentTarget.value))}
-							/>
-							<span class="text-background-foreground block text-sm"
-								>{selectedElement.rotation || 0}°</span
-							>
-						</div>
-					</div>
+				<div>
+					<ClipboardActions />
+					<MoveToPage />
 				</div>
-			{/if}
-
-			<!-- Image Properties -->
-			{#if selectedElement.type === 'image'}
-				<div class="space-y-2">
-					<h4 class="font-medium text-foreground">Image Properties</h4>
-					<div class="flex flex-col gap-2 max-lg:flex-row">
-						<div class="max-lg:min-w-[10rem]">
-							<Input
-								type="url"
-								value={selectedElement.src}
-								onChange={(value) => handlePropertyChange('src', value)}
-								testId="input-image-src"
-								label="Image URL"
-								placeholder="https://example.com/image.jpg"
-							/>
-						</div>
-						<div class="max-lg:min-w-[10rem]">
-							<Select
-								value={selectedElement.objectFit || 'contain'}
-								onChange={(value) => handlePropertyChange('objectFit', value)}
-								testId="select-object-fit"
-								options={[...objectFitOptions]}
-								label="Object Fit"
-							/>
-						</div>
-						<div class="max-lg:min-w-[10rem]">
-							<span class="text-background-foreground block text-sm">Border Radius</span>
-							<input
-								data-testid="input-border-radius"
-								type="range"
-								min="0"
-								max="100"
-								value={selectedElement.borderRadius || 0}
-								class="w-full"
-								oninput={(e) =>
-									handlePropertyChange('borderRadius', parseInt(e.currentTarget.value))}
-							/>
-							<span class="text-background-foreground block text-sm"
-								>{selectedElement.borderRadius || 0}%</span
-							>
-						</div>
-						<div class="max-lg:min-w-[10rem]">
-							<span class="text-background-foreground block text-sm">Opacity</span>
-							<input
-								data-testid="input-opacity"
-								type="range"
-								min="0"
-								max="1"
-								step="0.1"
-								value={selectedElement.opacity || 1}
-								class="w-full"
-								oninput={(e) => handlePropertyChange('opacity', parseFloat(e.currentTarget.value))}
-							/>
-							<span class="text-background-foreground block text-sm"
-								>{((selectedElement.opacity || 1) * 100).toFixed(0)}%</span
-							>
-						</div>
-						<div class="max-lg:min-w-[10rem]">
-							<ColorInput
-								value={selectedElement.borderColor || '#000000'}
-								onChange={(value) => handlePropertyChange('borderColor', value)}
-								testId="input-border-color"
-								label="Border Color"
-							/>
-						</div>
-						<div class="max-lg:min-w-[10rem]">
-							<NumberInput
-								value={selectedElement.borderWidth || 0}
-								handleInput={(value) => handlePropertyChange('borderWidth', value)}
-								testId="input-border-width"
-								max={20}
-								label="Border Width"
-							/>
-						</div>
-						<div class="max-lg:min-w-[10rem]">
-							<Select
-								value={selectedElement.borderStyle || 'solid'}
-								onChange={(value) => handlePropertyChange('borderStyle', value)}
-								testId="select-border-style"
-								options={[...borderStyles]}
-								label="Border Style"
-							/>
-						</div>
-						<div class="max-lg:min-w-[10rem]">
-							<Input
-								value={selectedElement.boxShadow || ''}
-								onChange={(value) => handlePropertyChange('boxShadow', value)}
-								testId="input-box-shadow"
-								label="Box Shadow"
-								placeholder="0px 2px 4px rgba(0,0,0,0.1)"
-							/>
-						</div>
-						<div class="max-lg:min-w-[10rem]">
-							<ColorInput
-								value={selectedElement.backgroundColor || '#ffffff'}
-								onChange={(value) => handlePropertyChange('backgroundColor', value)}
-								testId="input-background-color"
-								label="Background Color"
-							/>
-						</div>
-					</div>
-				</div>
-			{/if}
-
-			<!-- Delete Button -->
-			<div class="pt-4">
 				<Button
-					data-testid="delete-element-btn"
-					onClick={() => appStore.deleteElement(selectedElement.id, selectedElement.pageId)}
-					variant="destructive"
+					data-testid="delete-selected-btn"
+					onClick={() =>
+						appStore.deleteElements(
+							selectedElements.map((el) => el.id),
+							selectedElements[0].pageId
+						)}
+					variant="secondary-destructive"
 					fullWidth
-					className="max-lg:min-w-[12rem]"
 				>
 					<Trash2 class="mr-2 h-4 w-4" />
-					Delete Element
+					Delete {selectedElements.length} elements
 				</Button>
 			</div>
-		</div>
+		{/if}
 	</div>
 {/if}

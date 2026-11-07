@@ -1,11 +1,24 @@
 // Minimal IndexedDB wrapper for storing documents
 import type { DocumentData } from '../types/canvas';
+import { CURRENT_SCHEMA_VERSION, migrateDocument } from './migrations';
 
 export type DocumentRecord = DocumentData;
 
 const DB_NAME = 'lienzo-db';
 const STORE_NAME = 'documents';
 const DB_VERSION = 1;
+
+export class StorageQuotaError extends Error {
+	constructor() {
+		super('Not enough browser storage to save this document. Free up space and try again.');
+		this.name = 'StorageQuotaError';
+	}
+}
+
+export const asStorageError = (error: unknown) =>
+	error instanceof DOMException && error.name === 'QuotaExceededError'
+		? new StorageQuotaError()
+		: error;
 
 export function isIndexedDBSupported(): boolean {
 	// Check for IndexedDB support
@@ -26,8 +39,12 @@ export function isIndexedDBSupported(): boolean {
 	}
 }
 
+// One shared connection. It is dropped when another tab upgrades the database
+// (versionchange) or the browser closes it, so the next call reopens it.
+let dbPromise: Promise<IDBDatabase> | null = null;
+
 function openDB(): Promise<IDBDatabase> {
-	return new Promise((resolve, reject) => {
+	dbPromise ??= new Promise<IDBDatabase>((resolve, reject) => {
 		if (!isIndexedDBSupported()) {
 			reject(new Error('IndexedDB not supported in this browser'));
 			return;
@@ -40,9 +57,26 @@ function openDB(): Promise<IDBDatabase> {
 				db.createObjectStore(STORE_NAME, { keyPath: 'id' });
 			}
 		};
-		req.onsuccess = () => resolve(req.result);
+		req.onblocked = () =>
+			reject(
+				new Error('Storage upgrade is blocked by another open Lienzo tab. Close it and retry.')
+			);
+		req.onsuccess = () => {
+			const db = req.result;
+			const reset = () => {
+				db.close();
+				dbPromise = null;
+			};
+			db.onversionchange = reset;
+			db.onclose = () => (dbPromise = null);
+			resolve(db);
+		};
 		req.onerror = () => reject(req.error);
+	}).catch((error) => {
+		dbPromise = null;
+		throw error;
 	});
+	return dbPromise;
 }
 
 // Clean the document data to ensure it can be stored in IndexedDB
@@ -61,11 +95,11 @@ export async function saveDocument(record: DocumentData): Promise<void> {
 		};
 
 		tx.onerror = () => {
-			reject(tx.error || new Error('Unknown transaction error'));
+			reject(asStorageError(tx.error) || new Error('Unknown transaction error'));
 		};
 
 		tx.onabort = () => {
-			reject(new Error('Transaction was aborted'));
+			reject(asStorageError(tx.error) || new Error('Transaction was aborted'));
 		};
 
 		try {
@@ -73,6 +107,7 @@ export async function saveDocument(record: DocumentData): Promise<void> {
 			// Clean the data and add updatedAt
 			const cleanData = {
 				...cleanDocumentData(record),
+				schemaVersion: CURRENT_SCHEMA_VERSION,
 				updatedAt: Date.now()
 			};
 			const request = store.put(cleanData);
@@ -82,11 +117,11 @@ export async function saveDocument(record: DocumentData): Promise<void> {
 			};
 
 			request.onerror = () => {
-				reject(request.error || new Error('Unknown store error'));
+				reject(asStorageError(request.error) || new Error('Unknown store error'));
 			};
 		} catch (error) {
 			console.error('Error in transaction:', error);
-			reject(error);
+			reject(asStorageError(error));
 		}
 	});
 }
@@ -97,7 +132,18 @@ export async function getAllDocuments(): Promise<DocumentData[]> {
 	return new Promise((resolve, reject) => {
 		const store = db.transaction(STORE_NAME).objectStore(STORE_NAME);
 		const req = store.getAll();
-		req.onsuccess = () => resolve(req.result as DocumentRecord[]);
+		req.onsuccess = () => {
+			// A record that is invalid or from a newer app version must not hide the other documents
+			const documents: DocumentData[] = [];
+			for (const raw of req.result) {
+				try {
+					documents.push(migrateDocument(raw));
+				} catch (error) {
+					console.warn('Skipping unreadable document:', error);
+				}
+			}
+			resolve(documents);
+		};
 		req.onerror = () => reject(req.error);
 	});
 }
@@ -108,7 +154,13 @@ export async function getDocument(id: string): Promise<DocumentData | undefined>
 	return new Promise((resolve, reject) => {
 		const store = db.transaction(STORE_NAME).objectStore(STORE_NAME);
 		const req = store.get(id);
-		req.onsuccess = () => resolve(req.result as DocumentRecord | undefined);
+		req.onsuccess = () => {
+			try {
+				resolve(req.result === undefined ? undefined : migrateDocument(req.result));
+			} catch (error) {
+				reject(error);
+			}
+		};
 		req.onerror = () => reject(req.error);
 	});
 }

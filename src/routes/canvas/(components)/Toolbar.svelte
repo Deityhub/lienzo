@@ -1,18 +1,34 @@
 <script lang="ts">
-	import Button from '$lib/components/Button.svelte';
-	import { ChevronLeft, ChevronRight } from '@lucide/svelte';
+	import { appStore } from '$lib/stores/appStore.svelte.ts';
+	import { targetPageId } from '$lib/canvas/targetPage';
+	import { newElementPlacement } from '$lib/utils/geometry';
+	import { BoxSelect, FilePlus, Image as ImageIcon, Shapes, Type } from '@lucide/svelte';
 	type ElementType = 'text' | 'shape' | 'image';
 	type TouchEventType = TouchEvent & { currentTarget: EventTarget & HTMLElement };
 
 	const tools = [
-		{ type: 'text' as ElementType, label: 'Text', icon: 'T' },
-		{ type: 'shape' as ElementType, label: 'Shapes', icon: '◇' },
-		{ type: 'image' as ElementType, label: 'Image', icon: '🖼️' }
+		{ type: 'text' as ElementType, label: 'Text', icon: Type },
+		{ type: 'shape' as ElementType, label: 'Shape', icon: Shapes },
+		{ type: 'image' as ElementType, label: 'Image', icon: ImageIcon }
 	];
 
-	let toolbarRef: HTMLDivElement;
+	const multiSelectMode = $derived(appStore.getMultiSelectMode());
+
+	/** Add an element without dragging: on the page last clicked, a little lower for each one already there. */
+	function addTool(type: ElementType) {
+		const pageId = targetPageId();
+		const page = pageId ? appStore.getPages()[pageId] : null;
+		if (!pageId || !page) return;
+
+		const { horizontal, vertical } = page.boundaries;
+		const count = Object.keys(page.elements).length;
+		const point = { x: horizontal.start + 60, y: vertical.start + 60 + 60 * (count % 8) };
+		const placement = newElementPlacement(point, page.boundaries, Object.values(page.elements));
+		appStore.addElement({ type, pageId, ...placement });
+	}
+
+	let toolbarRef: HTMLElement;
 	let isDragging = $state(false);
-	let isExpanded = $state(false);
 	let dataTransfer: DataTransfer | null = null;
 
 	let touchStartX = 0;
@@ -136,66 +152,74 @@
 	}
 </script>
 
-<div
+<!-- A rail on the left on tablets and desktops, a bar along the bottom on phones -->
+<nav
 	bind:this={toolbarRef}
-	class="absolute left-[50%] z-9999 m-auto flex h-auto w-[90vw] translate-x-[-50%] translate-y-[-50%] flex-col border-r border-border bg-background transition-all duration-300 ease-in-out max-sm:top-40 sm:top-28 md:relative md:top-20 md:left-[unset] md:h-full md:translate-none {isExpanded
-		? 'md:w-64'
-		: 'md:w-20'}"
-	class:bg-blue-50={isDragging}
-	class:border-blue-300={isDragging}
+	aria-label="Add to page"
+	data-keep-selection
+	class="flex border-border bg-surface transition-colors max-md:fixed max-md:inset-x-0 max-md:bottom-0 max-md:z-9999 max-md:h-16 max-md:border-t md:relative md:h-full md:w-[72px] md:flex-none md:flex-col md:items-center md:border-r md:pt-[65px]"
+	class:bg-primary-light={isDragging}
+	class:border-primary={isDragging}
 >
-	<div class="absolute top-1/2 -right-4 hidden rounded-xl bg-background md:block">
-		<Button onClick={() => (isExpanded = !isExpanded)} variant="text">
-			{#if isExpanded}
-				<ChevronLeft class="h-7 w-7" />
-			{:else}
-				<ChevronRight class="h-7 w-7" />
-			{/if}
-		</Button>
-	</div>
-
-	<div class="flex-1 overflow-y-auto px-2 pt-0 md:pt-8 md:pb-4" data-testid="toolbar">
-		<div class="flex flex-row justify-center gap-5 space-y-2 md:flex-col md:justify-start md:gap-0">
-			{#each tools as tool (tool.type)}
-				<div
-					data-testid="tool-{tool.type}"
-					draggable="true"
-					ondragstart={(e) => handleDragStart(e, tool.type)}
-					ondragend={() => handleDragEnd()}
-					ontouchstart={(e: TouchEventType) => handleTouchStart(e, tool.type)}
-					ontouchmove={(e: TouchEventType) => handleTouchMove(e)}
-					ontouchend={(e: TouchEventType) => handleTouchEnd(e)}
-					ontouchcancel={() => handleDragEnd()}
-					role="button"
-					tabindex="0"
-					class="tool-item {isDragging ? 'dragging' : ''}"
-					style:touch-action="none"
+	<div
+		class="flex w-full flex-1 items-stretch justify-around md:flex-col md:items-center md:justify-center md:gap-2.5"
+		data-testid="toolbar"
+	>
+		{#each tools as tool (tool.type)}
+			<!-- Drag it onto a page, or tap or press Enter to add it -->
+			<div
+				data-testid="tool-{tool.type}"
+				draggable="true"
+				ondragstart={(e) => handleDragStart(e, tool.type)}
+				ondragend={() => handleDragEnd()}
+				ontouchstart={(e: TouchEventType) => handleTouchStart(e, tool.type)}
+				ontouchmove={(e: TouchEventType) => handleTouchMove(e)}
+				ontouchend={(e: TouchEventType) => handleTouchEnd(e)}
+				ontouchcancel={() => handleDragEnd()}
+				role="presentation"
+				class="tool-item flex flex-1 justify-center md:w-full md:flex-none {isDragging
+					? 'dragging'
+					: ''}"
+				style:touch-action="none"
+			>
+				<button
+					type="button"
+					onclick={() => addTool(tool.type)}
+					title="Add {tool.label}, or drag it onto the page"
+					class="flex w-full cursor-pointer flex-col items-center justify-center gap-1 rounded-md px-1 py-2 text-[11px] leading-none font-semibold text-foreground transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none active:cursor-grabbing md:w-14"
 				>
-					<div
-						class="group flex cursor-grab items-center gap-3 overflow-hidden rounded-lg p-2 transition-all duration-200 hover:bg-foreground/5 active:cursor-grabbing {isDragging
-							? 'scale-105 bg-primary/10'
-							: ''}"
-						title="Drag {tool.label} to canvas"
-						aria-label="Drag {tool.label} tool to canvas"
-					>
-						<div
-							class="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-lg bg-accent text-lg font-semibold text-foreground"
-						>
-							{tool.icon}
-						</div>
-						<span
-							class="hidden text-sm font-medium whitespace-nowrap text-foreground transition-opacity duration-200 md:block"
-							class:opacity-0={!isExpanded}
-							class:opacity-100={isExpanded}
-						>
-							{tool.label}
-						</span>
-					</div>
-				</div>
-			{/each}
+					<tool.icon class="h-[22px] w-[22px]" aria-hidden="true" />
+					{tool.label}
+				</button>
+			</div>
+		{/each}
+
+		<!-- Only on phones: the header has no room for these -->
+		<div class="flex flex-1 md:hidden" data-keep-selection>
+			<button
+				type="button"
+				aria-pressed={multiSelectMode}
+				onclick={() => appStore.setMultiSelectMode(!multiSelectMode)}
+				data-testid="multi-select-bar-btn"
+				class="flex w-full cursor-pointer flex-col items-center justify-center gap-1 rounded-md px-1 py-2 text-[11px] leading-none font-semibold text-foreground transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none aria-pressed:bg-primary-light aria-pressed:text-primary-text"
+			>
+				<BoxSelect class="h-[22px] w-[22px]" aria-hidden="true" />
+				Select
+			</button>
+		</div>
+		<div class="flex flex-1 md:hidden">
+			<button
+				type="button"
+				onclick={() => appStore.addPage()}
+				data-testid="add-page-bar-btn"
+				class="flex w-full cursor-pointer flex-col items-center justify-center gap-1 rounded-md px-1 py-2 text-[11px] leading-none font-semibold text-foreground transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+			>
+				<FilePlus class="h-[22px] w-[22px]" aria-hidden="true" />
+				Page
+			</button>
 		</div>
 	</div>
-</div>
+</nav>
 
 <style>
 	.tool-item.dragging {

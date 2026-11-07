@@ -6,6 +6,8 @@ interface BaseElement {
 	type: ElementType;
 	pageId: string;
 	parentElementId?: string | null; // Parent element ID for grouping (null for root elements)
+	/** Elements with the same groupId are selected and moved together */
+	groupId?: string;
 	zIndex: number; // For stacking order
 	x: number;
 	y: number;
@@ -90,6 +92,8 @@ export interface DocumentPage {
 
 export interface DocumentData {
 	id: string;
+	/** Stored document shape version, see stores/migrations.ts */
+	schemaVersion: number;
 	name: string;
 	pages: Record<string, DocumentPage>;
 	createdAt: number;

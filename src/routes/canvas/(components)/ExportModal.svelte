@@ -1,10 +1,13 @@
 <script lang="ts">
 	import { Modal } from '$lib/components';
-	import { NameModal } from '$lib/components';
 	import { appStore } from '$lib/stores/appStore.svelte.ts';
-	import jsPDF from 'jspdf';
+	import { downloadBlob } from '$lib/utils/download';
+	import { safeFileName } from '$lib/utils/fileName';
+	import { serializeDocuments } from '$lib/utils/documentFile';
 	import { getPageImageData } from '$lib/utils/canvas';
 	import { CANVAS_WIDTH, CANVAS_HEIGHT } from '$lib/const/dimension';
+	import { CircleAlert, CircleCheck, Paperclip, TriangleAlert } from '@lucide/svelte';
+	import { untrack } from 'svelte';
 
 	interface Props {
 		isOpen: boolean;
@@ -16,178 +19,254 @@
 	// Canvas dimensions in mm (A4 at 300 DPI)
 	const DPI = 300;
 	const MM_PER_INCH = 25.4;
-	const pageWidth = (CANVAS_WIDTH / DPI) * MM_PER_INCH;
-	const pageHeight = (CANVAS_HEIGHT / DPI) * MM_PER_INCH;
+	const pageWidth = Math.round((CANVAS_WIDTH / DPI) * MM_PER_INCH);
+	const pageHeight = Math.round((CANVAS_HEIGHT / DPI) * MM_PER_INCH);
 
-	let isGenerating = $state(false);
-	let progress = $state(0);
-	let showPreview = $state(false);
-	let previewImages = $state<string[]>([]);
-	let isGeneratingPreview = $state(false);
-	let nameModalOpen = $state(false);
-	let documentName = $derived(appStore.getCurrentDocument()?.name || '');
+	type Phase = 'preparing' | 'ready' | 'exporting' | 'done' | 'error';
 
-	async function generatePreview() {
-		if (isGeneratingPreview) return;
-		isGeneratingPreview = true;
-		showPreview = false;
+	let phase = $state<Phase>('preparing');
+	let previews = $state<string[]>([]);
+	let previewFailed = $state(false);
+	let fileName = $state('');
+	let fileNameError = $state('');
+	let progress = $state({ done: 0, total: 0 });
+	let warnings = $state<string[]>([]);
+	let savedAs = $state('');
+	let session = 0; // a new one for every opening, so a late preview never lands in a later dialog
+
+	const pageCount = $derived(Object.keys(appStore.getPages()).length);
+	const percent = $derived(progress.total ? Math.round((progress.done / progress.total) * 100) : 0);
+	// Only while the PDF is being made is the dialog locked: the preview may still be drawing and can be left
+	const busy = $derived(phase === 'exporting');
+
+	// Open: start from the document's name and draw a preview of each page
+	$effect(() => {
+		if (isOpen) untrack(() => void prepare());
+	});
+
+	async function prepare() {
+		const current = ++session;
+		phase = 'preparing';
+		previews = [];
+		previewFailed = false;
+		warnings = [];
+		fileNameError = '';
+		fileName = safeFileName(appStore.getCurrentDocument().name) || 'Untitled document';
+
 		try {
-			const pages = Object.values(appStore.getPages());
-			const previewCanvases: string[] = [];
-			for (let i = 0; i < pages.length; i++) {
-				const page = pages[i];
-
-				// Use the utility function to create export canvas
-				// and Convert to image data
-				const scale = appStore.getScale();
-				const imgData = await getPageImageData(page, scale);
-
-				previewCanvases.push(imgData);
+			const images: string[] = [];
+			for (const page of Object.values(appStore.getPages())) {
+				const image = await getPageImageData(page, appStore.getScale());
+				if (!image) throw new Error('Could not draw a page');
+				images.push(image);
 			}
-			previewImages = previewCanvases;
-			showPreview = true;
-		} catch (_error) {
-			alert('Error generating preview. Please try again.');
-			console.error('Error generating preview: ', _error);
-		} finally {
-			isGeneratingPreview = false;
+			if (current !== session) return;
+			previews = images;
+		} catch (error) {
+			console.error('Error generating preview: ', error);
+			if (current === session) previewFailed = true; // the PDF can still be made without it
+		}
+		if (current === session) phase = 'ready';
+	}
+
+	async function exportPdf() {
+		const name = safeFileName(fileName);
+		if (!name) {
+			fileNameError = 'Enter a file name.';
+			return;
+		}
+		fileNameError = '';
+		const current = session;
+		phase = 'exporting';
+		progress = { done: 0, total: pageCount };
+		warnings = [];
+
+		try {
+			// Real text and vector shapes, with the editable document embedded so it can be imported back
+			const { renderDocumentPdf } = await import('$lib/pdf/renderDocument');
+			const document = appStore.getCurrentDocument();
+			const result = await renderDocumentPdf(
+				document,
+				serializeDocuments([document]),
+				name,
+				(done, total) => (progress = { done, total })
+			);
+			downloadBlob(
+				`${name}.pdf`,
+				new Blob([new Uint8Array(result.bytes)], { type: 'application/pdf' })
+			);
+			if (current !== session) return;
+			warnings = result.warnings;
+			savedAs = `${name}.pdf`;
+			phase = 'done';
+		} catch (error) {
+			console.error('Error generating PDF: ', error);
+			if (current === session) phase = 'error';
 		}
 	}
 
-	async function confirmAndExportPDF() {
-		if (isGenerating) return;
-		if (!documentName) {
-			nameModalOpen = true;
-			return;
-		}
-		isGenerating = true;
-		try {
-			const pages = Object.values(appStore.getPages());
-			const pdf = new jsPDF({
-				orientation: pageWidth > pageHeight ? 'landscape' : 'portrait',
-				unit: 'mm',
-				format: [pageWidth, pageHeight]
-			});
-
-			for (let i = 0; i < pages.length; i++) {
-				const page = pages[i];
-				progress = Math.round(((i + 1) / pages.length) * 100);
-
-				// Use the utility function to create export canvas
-				// and Convert to image data
-				const scale = appStore.getScale();
-				const imgData = await getPageImageData(page, scale);
-
-				// Add to PDF - use exact canvas dimensions
-				if (i > 0) {
-					pdf.addPage();
-				}
-
-				// Add image at full size (no scaling needed since we're using exact dimensions)
-				pdf.addImage(imgData, 'PNG', 0, 0, pageWidth, pageHeight, undefined, 'FAST');
-			}
-
-			// Save the PDF
-			pdf.save(`${documentName || 'document'}.pdf`);
-		} catch (_error) {
-			alert('Error generating PDF. Please try again.');
-			console.error('Error generating PDF: ', _error);
-		} finally {
-			isGenerating = false;
-			progress = 0;
-			showPreview = false;
+	function close() {
+		if (!busy) {
+			session++; // anything still in flight belongs to this dialog and is dropped
 			onClose();
 		}
 	}
 
-	function handleClose() {
-		if (!isGenerating && !isGeneratingPreview) onClose();
-	}
-
-	function handleNameSave(name: string) {
-		appStore.updateCurrentDocument({ name });
-		documentName = name;
-		nameModalOpen = false;
-
-		// Continue export after getting name
-		confirmAndExportPDF();
-	}
+	const acceptLabel = $derived(
+		phase === 'exporting'
+			? 'Generating PDF…'
+			: phase === 'done'
+				? 'Export again'
+				: phase === 'error'
+					? 'Try again'
+					: 'Export PDF'
+	);
 </script>
 
 {#if isOpen}
-	{#if nameModalOpen}
-		<NameModal
-			isOpen={nameModalOpen}
-			onClose={() => (nameModalOpen = false)}
-			onSave={handleNameSave}
-			initialName={documentName}
-		/>
-	{:else if showPreview}
-		<Modal
-			open={true}
-			title="PDF Preview"
-			description={`Here's how your document will appear in the PDF using the exact canvas dimensions of (${Math.round(pageWidth)}mm × ${Math.round(pageHeight)}mm). ${previewImages.length} page${previewImages.length > 1 ? 's' : ''}.`}
-			onCancel={() => {
-				showPreview = false;
-			}}
-			onAccept={confirmAndExportPDF}
-			acceptLabel={isGenerating ? 'Generating PDF...' : 'Export PDF'}
-			disableActions={isGenerating}
-			cancelLabel="Back to Options"
-		>
-			{#if isGenerating}
-				<div class="mb-4">
-					<div class="mb-2 flex items-center justify-between">
-						<span class="text-sm text-muted-foreground">Generating PDF...</span>
-						<span class="text-sm text-muted-foreground">{progress}%</span>
+	<Modal
+		open={true}
+		size="lg"
+		title="Export PDF"
+		description={`A4 (${pageWidth} × ${pageHeight} mm), ${pageCount} page${pageCount === 1 ? '' : 's'}. Text stays selectable, fonts are embedded and your editable document travels inside the file.`}
+		onCancel={close}
+		onAccept={exportPdf}
+		{acceptLabel}
+		cancelLabel={phase === 'done' ? 'Close' : 'Cancel'}
+		disableActions={busy}
+		isPending={phase === 'exporting'}
+	>
+		<div class="flex flex-col gap-5" data-testid="export-dialog">
+			<!-- the pages as they will be drawn -->
+			<div class="rounded-lg border border-border bg-surface p-4">
+				{#if phase === 'preparing'}
+					<div class="flex justify-center gap-4" role="status" aria-label="Preparing the preview">
+						<div class="h-60 w-44 animate-pulse rounded bg-muted"></div>
+						<div class="hidden h-60 w-44 animate-pulse rounded bg-muted sm:block"></div>
 					</div>
-					<div class="h-2 w-full rounded-full bg-muted">
+				{:else if previewFailed}
+					<p class="py-6 text-center text-sm text-muted-foreground">
+						The preview could not be drawn, but the PDF can still be exported.
+					</p>
+				{:else}
+					<div class="flex max-h-72 flex-wrap justify-center gap-5 overflow-y-auto">
+						{#each previews as preview, index (index)}
+							<figure class="flex flex-col items-center gap-2">
+								<img
+									src={preview}
+									alt={`Preview of page ${index + 1}`}
+									class="h-60 w-auto rounded-sm border border-border bg-paper shadow-md"
+								/>
+								<figcaption class="text-xs text-muted-foreground">Page {index + 1}</figcaption>
+							</figure>
+						{/each}
+					</div>
+				{/if}
+			</div>
+
+			<div class="flex flex-col gap-1.5">
+				<label for="export-file-name" class="text-sm font-semibold">File name</label>
+				<div class="flex items-center gap-2">
+					<input
+						id="export-file-name"
+						type="text"
+						bind:value={fileName}
+						maxlength="100"
+						disabled={busy}
+						aria-invalid={fileNameError ? true : undefined}
+						aria-describedby={fileNameError ? 'export-file-name-error' : undefined}
+						data-testid="export-file-name"
+						class="h-9 min-w-0 flex-1 rounded border border-input border-b-primary bg-background px-3 text-sm text-foreground focus:ring-2 focus:ring-ring focus:outline-none disabled:opacity-50"
+					/>
+					<span class="text-sm text-muted-foreground">.pdf</span>
+				</div>
+				{#if fileNameError}
+					<p id="export-file-name-error" class="text-sm text-destructive-text" role="alert">
+						{fileNameError}
+					</p>
+				{/if}
+			</div>
+
+			{#if phase === 'ready' || phase === 'preparing'}
+				<div
+					class="flex items-start gap-3 rounded-lg border border-primary-text bg-primary-light px-4 py-3 text-sm"
+				>
+					<Paperclip class="mt-0.5 h-5 w-5 flex-none text-primary-text" aria-hidden="true" />
+					<p>
+						<strong class="font-semibold">lienzo-document.json is attached.</strong>
+						<span class="text-muted-foreground"
+							>Import this PDF back into Lienzo any time to keep editing it.</span
+						>
+					</p>
+				</div>
+			{/if}
+
+			{#if phase === 'exporting'}
+				<div class="flex flex-col gap-2" role="status">
+					<div class="flex justify-between text-sm">
+						<span
+							>Drawing page {Math.min(progress.done + 1, progress.total)} of {progress.total}…</span
+						>
+						<span class="text-muted-foreground">{percent}%</span>
+					</div>
+					<div
+						class="h-1.5 rounded-full bg-border"
+						role="progressbar"
+						aria-label="Export progress"
+						aria-valuemin={0}
+						aria-valuemax={100}
+						aria-valuenow={percent}
+					>
 						<div
-							class="h-2 rounded-full bg-primary transition-all duration-300"
-							style={`width: ${progress}%`}
+							class="h-1.5 rounded-full bg-primary transition-all duration-300"
+							style:width="{percent}%"
 						></div>
 					</div>
 				</div>
 			{/if}
 
-			<div
-				class="grid max-h-[calc(100vh-24rem)] gap-4 overflow-y-auto"
-				class:grid-cols-1={previewImages.length === 1}
-				class:grid-cols-2={previewImages.length > 1}
-			>
-				{#each previewImages as previewImage, index (index)}
-					<div class="rounded-lg border border-border bg-background p-2">
-						<div class="mb-2 text-sm text-muted-foreground">Page {index + 1}</div>
-						<img
-							src={previewImage}
-							alt={`Document preview page ${index + 1}`}
-							class="h-auto w-full rounded border border-border shadow-sm"
-							style="max-height: 400px; object-fit: contain;"
-						/>
+			{#if phase === 'done'}
+				<div class="flex flex-col gap-2.5" role="status" data-testid="export-done">
+					<div
+						class="flex items-center gap-2.5 rounded-lg border border-success bg-success-light px-4 py-3 text-sm"
+					>
+						<CircleCheck class="h-5 w-5 flex-none text-success" aria-hidden="true" />
+						<p>
+							<strong class="font-semibold">{savedAs} was saved.</strong>
+							Check your downloads folder.
+						</p>
 					</div>
-				{/each}
-			</div>
-		</Modal>
-	{:else}
-		<Modal
-			open={true}
-			title="Export Document"
-			description={`Your document will be exported as a PDF using the exact canvas dimensions of (${Math.round(pageWidth)}mm × ${Math.round(pageHeight)}mm).`}
-			onCancel={handleClose}
-			onAccept={generatePreview}
-			acceptLabel={isGeneratingPreview ? 'Generating Preview...' : 'Preview PDF'}
-			disableActions={isGeneratingPreview}
-		>
-			{#if isGeneratingPreview}
-				<div class="mb-4">
-					<div class="mb-2 flex items-center justify-between">
-						<span class="text-sm text-muted-foreground">Generating Preview...</span>
-					</div>
-					<div class="h-2 w-full rounded-full bg-muted">
-						<div class="h-2 animate-pulse rounded-full bg-primary" style="width: 100%"></div>
-					</div>
+					{#each warnings as warning (warning)}
+						<div
+							class="flex items-start gap-2.5 rounded-lg border border-warning bg-warning-light px-4 py-3 text-sm"
+							data-testid="export-warning"
+						>
+							<TriangleAlert
+								class="mt-0.5 h-5 w-5 flex-none text-warning-dark"
+								aria-hidden="true"
+							/>
+							<p>{warning}</p>
+						</div>
+					{/each}
 				</div>
 			{/if}
-		</Modal>
-	{/if}
+
+			{#if phase === 'error'}
+				<div
+					class="flex items-start gap-2.5 rounded-lg border border-destructive bg-destructive-light px-4 py-3 text-sm"
+					role="alert"
+					data-testid="export-error"
+				>
+					<CircleAlert class="mt-0.5 h-5 w-5 flex-none text-destructive-text" aria-hidden="true" />
+					<p>
+						<strong class="font-semibold text-destructive-text"
+							>The PDF could not be created.</strong
+						>
+						Please try again. If it keeps failing, export your document as a .lienzo.json file from the
+						Documents page so nothing is lost.
+					</p>
+				</div>
+			{/if}
+		</div>
+	</Modal>
 {/if}

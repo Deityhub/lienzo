@@ -135,7 +135,7 @@
 		id={inputId}
 		{value}
 		oninput={handleOnInput}
-		class="flex h-9 w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm ring-offset-background placeholder:text-muted-foreground focus:ring-1 focus:ring-ring focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+		class="flex h-9 w-full items-center justify-between rounded border border-input bg-transparent px-3 py-1 text-sm shadow-sm ring-offset-background placeholder:text-muted-foreground focus:ring-1 focus:ring-ring focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
 		{min}
 		{max}
 		{step}
@@ -156,7 +156,7 @@
 
 	{#if isDropdownOpen && options.length > 0}
 		<div
-			class="ring-opacity-5 fixed z-50 max-h-60 min-w-[var(--select-width)] overflow-auto rounded-md border border-border bg-popover py-1 text-sm shadow-lg ring-1 ring-ring focus:outline-none"
+			class="ring-opacity-5 fixed z-50 max-h-60 min-w-[var(--select-width)] overflow-auto rounded border border-border bg-popover py-1 text-sm shadow-lg ring-1 ring-ring focus:outline-none"
 			style="left: var(--select-left); {dropdownPosition === 'bottom'
 				? 'top: var(--select-bottom);'
 				: 'bottom: var(--select-top);'}"
@@ -182,7 +182,7 @@
 					{option.label}
 
 					{#if value === option.value}
-						<span class="absolute top-1/4 right-2 flex items-center text-primary">
+						<span class="absolute top-1/4 right-2 flex items-center text-primary-text">
 							<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
 								<path
 									stroke-linecap="round"

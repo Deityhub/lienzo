@@ -3,16 +3,30 @@
 	import CanvasElement from './CanvasElement.svelte';
 	import Ruler from './Ruler.svelte';
 	import { appStore } from '$lib/stores/appStore.svelte.ts';
-	import type {
-		TCanvasElement,
-		DocumentPage,
-		ResizeDirection,
-		TCanvasInstance
-	} from '$lib/types/canvas';
+	import type { DocumentPage, TCanvasInstance } from '$lib/types/canvas';
 	import { pixelsToPercent } from '$lib/utils';
+	import {
+		boundaryAdjustments,
+		boundingRect,
+		dragPreviewRect,
+		findElementAt,
+		getOverlappingElements
+	} from '$lib/utils/geometry';
+	import { createElementDrag } from '$lib/canvas/elementDrag.svelte';
+	import { createElementResize } from '$lib/canvas/elementResize.svelte';
+	import { createGroupResize } from '$lib/canvas/groupResize.svelte';
+	import { createMarquee } from '$lib/canvas/marquee.svelte';
+	import { pageDrop } from '$lib/canvas/pageDrop.svelte';
+	import type { TCanvasElement } from '$lib/types/canvas';
 
 	const selectedElement = $derived(appStore.getSelectedElement());
 	const scale = $derived(appStore.getScale());
+	const multiSelectMode = $derived(appStore.getMultiSelectMode());
+	const selectedHere = $derived(
+		appStore.getSelectedElements().filter((el) => el.pageId === page.id)
+	);
+	// A box around the selection, when several elements are selected
+	const selectionBox = $derived(selectedHere.length > 1 ? boundingRect(selectedHere) : null);
 
 	interface CanvasProps {
 		page: DocumentPage;
@@ -49,137 +63,61 @@
 		}
 	});
 
-	let dragRafId: number | null = null;
-	let lastPointer = { x: 0, y: 0 };
-	let dragMeta: {
-		id: string;
-		pageId: string;
-		startX: number;
-		startY: number;
-		width: number;
-		height: number;
-	} | null = null;
-
 	// Drag preview and highlighting states
 	let dragPreview = $state<{ x: number; y: number; width: number; height: number } | null>(null);
 	let hoveredElementId = $state<string | null>(null);
 	let highlightedElementIds = $state<string[]>([]);
 
+	// Elements from another page are being dragged over this one
+	const dropHere = $derived(pageDrop.target?.pageId === page.id ? pageDrop.target : null);
+
 	let canvasRef: HTMLDivElement;
 	let canvasPageRef: HTMLDivElement;
-	let isDragging = $state(false);
-	let dragStart = $state({ x: 0, y: 0 });
-	let isResizing = $state(false);
 
-	const SNAP_THRESHOLD = 10; // pixels
+	const pointerOptions = {
+		getCanvas: () => canvasRef,
+		getPage: () => page,
+		getSize: () => ({ width, height })
+	};
+	const drag = createElementDrag({
+		...pointerOptions,
+		onHover: (elementId) => (hoveredElementId = elementId)
+	});
+	const resize = createElementResize(pointerOptions);
+	const groupResize = createGroupResize(pointerOptions);
+	const marquee = createMarquee(pointerOptions);
+	const corners = ['nw', 'ne', 'sw', 'se'] as const;
 
-	// Helper to check if two elements overlap
-	function elementsOverlap(
-		el1: { x: number; y: number; width: number; height: number },
-		el2: { x: number; y: number; width: number; height: number }
-	): boolean {
-		return !(
-			el1.x + el1.width < el2.x ||
-			el2.x + el2.width < el1.x ||
-			el1.y + el1.height < el2.y ||
-			el2.y + el2.height < el1.y
-		);
+	/** Shift/Ctrl/Cmd, or the select-multiple mode: add to the selection instead of replacing it */
+	const isAdditive = (event: MouseEvent | PointerEvent | TouchEvent) =>
+		multiSelectMode || event.shiftKey || event.ctrlKey || event.metaKey;
+
+	function handleElementPress(event: PointerEvent | TouchEvent, element: TCanvasElement) {
+		// An unselected element is added by the click that follows, not dragged
+		if (isAdditive(event) && !appStore.isSelected(element.id)) return;
+		drag.start(event, element);
 	}
 
-	// Get elements that overlap with the given element
-	function getOverlappingElements(element: TCanvasElement): TCanvasElement[] {
-		return Object.values(page.elements).filter(
-			(el) => el.id !== element.id && elementsOverlap(element, el)
-		);
-	}
-
-	// Find which element (if any) contains the given point
-	function findElementAtPosition(x: number, y: number, excludeId?: string): TCanvasElement | null {
-		// Sort by zIndex descending to check top elements first
-		const sorted = [...Object.values(page.elements)].sort((a, b) => b.zIndex - a.zIndex);
-
-		for (const el of sorted) {
-			if (el.id === excludeId) continue;
-			if (x >= el.x && x <= el.x + el.width && y >= el.y && y <= el.y + el.height) {
-				return el;
-			}
-		}
-		return null;
+	function handleElementClick(event: MouseEvent, element: TCanvasElement) {
+		if (drag.consumeMoved()) return; // the click that ends a drag
+		if (isAdditive(event)) appStore.toggleSelected(element);
+		else if (!appStore.isSelected(element.id)) appStore.selectElement(element);
 	}
 
 	// Update highlighted elements when selection changes
 	$effect(() => {
 		if (selectedElement && selectedElement.pageId === page.id) {
-			const overlapping = getOverlappingElements(selectedElement);
+			const overlapping = getOverlappingElements(selectedElement, Object.values(page.elements));
 			highlightedElementIds = overlapping.map((el) => el.id);
 		} else {
 			highlightedElementIds = [];
 		}
 	});
 
-	// Constrain all elements to boundaries when boundaries change
+	// Fit the elements into the boundaries when they change; the elements of a group stay together
 	function constrainElementsToBoundaries() {
-		const { horizontal, vertical } = page.boundaries;
-		const elements = Object.values(page.elements);
-
-		elements.forEach((element) => {
-			let newX = element.x;
-			let newY = element.y;
-			let newWidth = element.width;
-			let newHeight = element.height;
-
-			const maxWidth = horizontal.end - horizontal.start;
-			const maxHeight = vertical.end - vertical.start;
-
-			// Ensure size stays within allowed range
-			if (newWidth > maxWidth) {
-				newWidth = maxWidth;
-			}
-			if (newHeight > maxHeight) {
-				newHeight = maxHeight;
-			}
-
-			// Ensure minimum size
-			if (newWidth < 20) {
-				newWidth = 20;
-			}
-			if (newHeight < 20) {
-				newHeight = 20;
-			}
-
-			// Constrain position to boundaries (similar to enforceBoundaries)
-			if (newX < horizontal.start) {
-				newX = horizontal.start;
-			}
-			if (newY < vertical.start) {
-				newY = vertical.start;
-			}
-			if (newX + newWidth > horizontal.end) {
-				newX = horizontal.end - newWidth;
-			}
-			if (newY + newHeight > vertical.end) {
-				newY = vertical.end - newHeight;
-			}
-
-			// Only update if something actually changed to avoid unnecessary re-renders
-			if (
-				newX !== element.x ||
-				newY !== element.y ||
-				newWidth !== element.width ||
-				newHeight !== element.height
-			) {
-				appStore.updateElement({
-					elementId: element.id,
-					updates: {
-						x: newX,
-						y: newY,
-						width: newWidth,
-						height: newHeight
-					},
-					pageId: element.pageId
-				});
-			}
-		});
+		const changes = boundaryAdjustments(Object.values(page.elements), page.boundaries);
+		if (Object.keys(changes).length) appStore.updateElements(page.id, changes);
 	}
 
 	// Watch for boundary changes and constrain elements
@@ -201,8 +139,9 @@
 			);
 
 			const isInsidePropertyPanel = propertyPanel?.contains(event.target as Node);
+			const keepsSelection = (event.target as Element).closest?.('[data-keep-selection]');
 
-			if (!isInsideAnyCanvas && !isInsidePropertyPanel) {
+			if (!isInsideAnyCanvas && !isInsidePropertyPanel && !keepsSelection) {
 				appStore.selectElement(null);
 			}
 		};
@@ -213,35 +152,9 @@
 		};
 	});
 
-	// Snap position to ruler boundaries
-	function snapToBoundaries(value: number, start: number, end: number): number {
-		if (Math.abs(value - start) < SNAP_THRESHOLD) {
-			return start;
-		}
-		if (Math.abs(value - end) < SNAP_THRESHOLD) {
-			return end;
-		}
-		return value;
-	}
-
-	// Enforce boundaries
-	function enforceBoundaries(
-		x: number,
-		y: number,
-		elementWidth: number,
-		elementHeight: number
-	): { x: number; y: number } {
-		const { horizontal, vertical } = page.boundaries;
-
-		// Clamp position to boundaries
-		const clampedX = Math.max(horizontal.start, Math.min(x, horizontal.end - elementWidth));
-		const clampedY = Math.max(vertical.start, Math.min(y, vertical.end - elementHeight));
-
-		return { x: clampedX, y: clampedY };
-	}
-
 	function handleCanvasClick(event: MouseEvent) {
 		if (event.target === canvasRef) {
+			if (marquee.consumeMoved()) return; // the click that ends a selection box
 			appStore.selectElement(null);
 		}
 	}
@@ -250,441 +163,22 @@
 		onDragover(event);
 	}
 
-	// Track current drag using dragMeta alone (no separate flag/id var)
-
-	function handleGlobalPointerUp() {
-		if (!isDragging || !dragMeta) {
-			return;
-		}
-
-		// Lookup the latest element state from store to finalize and reparent
-		const latest = appStore.findElement(dragMeta.pageId, dragMeta.id);
-		if (latest) {
-			const centerX = latest.x + latest.width / 2;
-			const centerY = latest.y + latest.height / 2;
-			const newParentElement = findElementAtPosition(centerX, centerY, latest.id);
-			const newParentId = newParentElement ? newParentElement.id : null;
-
-			appStore.moveElement({
-				pageId: latest.pageId,
-				elementId: latest.id,
-				newParentId,
-				newX: latest.x,
-				newY: latest.y
-			});
-
-			const updated = appStore.findElement(latest.pageId, latest.id);
-			if (updated) {
-				appStore.selectElement(updated);
-			}
-		}
-
-		// Cleanup
-		isDragging = false;
-		hoveredElementId = null;
-		dragMeta = null;
-		if (dragRafId !== null) {
-			cancelAnimationFrame(dragRafId);
-			dragRafId = null;
-		}
-		document.removeEventListener('pointermove', handleGlobalPointerMove);
-		document.removeEventListener('pointerup', handleGlobalPointerUp, true);
-		document.removeEventListener('touchmove', handleTouchMove);
-		document.removeEventListener('touchend', handleGlobalPointerUp, true);
-		document.removeEventListener('touchcancel', handleGlobalPointerUp, true);
-		document.body.style.userSelect = '';
-		document.body.style.touchAction = '';
-	}
-
-	function cancelDrag() {
-		// Abort drag without finalizing reparenting
-		isDragging = false;
-		hoveredElementId = null;
-		dragMeta = null;
-		if (dragRafId !== null) {
-			cancelAnimationFrame(dragRafId);
-			dragRafId = null;
-		}
-		document.removeEventListener('pointermove', handleGlobalPointerMove);
-		document.removeEventListener('pointerup', handleGlobalPointerUp, true);
-		document.removeEventListener('touchmove', handleTouchMove);
-		document.removeEventListener('touchend', handleGlobalPointerUp, true);
-		document.removeEventListener('touchcancel', handleGlobalPointerUp, true);
-		document.body.style.userSelect = '';
-		document.body.style.touchAction = '';
-	}
-
-	function startElementDrag(event: PointerEvent | TouchEvent, element: TCanvasElement) {
-		event.stopPropagation();
-
-		// Start global, rAF-throttled drag
-		isDragging = true;
-
-		// Handle both pointer and touch events
-		const startX = 'touches' in event ? event.touches[0].clientX : event.clientX;
-		const startY = 'touches' in event ? event.touches[0].clientY : event.clientY;
-
-		dragStart = { x: startX, y: startY };
-		dragMeta = {
-			id: element.id,
-			pageId: element.pageId,
-			startX: element.x,
-			startY: element.y,
-			width: element.width,
-			height: element.height
-		};
-		lastPointer = { x: startX, y: startY };
-
-		// Add both pointer and touch event listeners
-		document.addEventListener('pointermove', handleGlobalPointerMove);
-		document.addEventListener('pointerup', handleGlobalPointerUp, true);
-		document.addEventListener('touchmove', handleTouchMove, {
-			passive: false
-		} as AddEventListenerOptions);
-		document.addEventListener('touchend', handleGlobalPointerUp, true);
-		document.addEventListener('touchcancel', handleGlobalPointerUp, true); // Add touchcancel
-		document.body.style.userSelect = 'none';
-		document.body.style.touchAction = 'none';
-	}
-
-	function handleTouchMove(e: TouchEvent) {
-		if (!isDragging || !dragMeta) return;
-
-		const touch = e.touches[0];
-		lastPointer = { x: touch.clientX, y: touch.clientY };
-
-		// rAF throttle
-		if (dragRafId === null) {
-			dragRafId = requestAnimationFrame(() => {
-				dragRafId = null;
-				if (!isDragging || !dragMeta) return;
-
-				const rect = canvasRef.getBoundingClientRect();
-				const scaleX = width / rect.width;
-				const scaleY = height / rect.height;
-
-				const deltaX = (lastPointer.x - dragStart.x) * scaleX;
-				const deltaY = (lastPointer.y - dragStart.y) * scaleY;
-
-				let newX = dragMeta.startX + deltaX;
-				let newY = dragMeta.startY + deltaY;
-
-				// Snap and enforce boundaries
-				newX = snapToBoundaries(
-					newX,
-					page.boundaries.horizontal.start,
-					page.boundaries.horizontal.end - dragMeta.width
-				);
-				newY = snapToBoundaries(
-					newY,
-					page.boundaries.vertical.start,
-					page.boundaries.vertical.end - dragMeta.height
-				);
-
-				const bounded = {
-					x: newX,
-					y: newY
-				};
-
-				appStore.updateElement({
-					elementId: dragMeta.id,
-					updates: { x: bounded.x, y: bounded.y },
-					pageId: dragMeta.pageId
-				});
-			});
-		}
-	}
-
-	function handleGlobalPointerMove(e: PointerEvent) {
-		lastPointer = { x: e.clientX, y: e.clientY };
-		// rAF throttle
-		if (dragRafId === null) {
-			dragRafId = requestAnimationFrame(() => {
-				dragRafId = null;
-				if (!isDragging || !dragMeta) return;
-
-				const rect = canvasRef.getBoundingClientRect();
-				const scaleX = width / rect.width;
-				const scaleY = height / rect.height;
-
-				const deltaX = (lastPointer.x - dragStart.x) * scaleX;
-				const deltaY = (lastPointer.y - dragStart.y) * scaleY;
-
-				let newX = dragMeta.startX + deltaX;
-				let newY = dragMeta.startY + deltaY;
-
-				// Snap and enforce boundaries
-				newX = snapToBoundaries(
-					newX,
-					page.boundaries.horizontal.start,
-					page.boundaries.horizontal.end - dragMeta.width
-				);
-				newY = snapToBoundaries(
-					newY,
-					page.boundaries.vertical.start,
-					page.boundaries.vertical.end - dragMeta.height
-				);
-				const bounded = enforceBoundaries(newX, newY, dragMeta.width, dragMeta.height);
-
-				// Hover state based on center
-				const centerX = bounded.x + dragMeta.width / 2;
-				const centerY = bounded.y + dragMeta.height / 2;
-				const newParentElement = findElementAtPosition(centerX, centerY, dragMeta.id);
-				hoveredElementId = newParentElement ? newParentElement.id : null;
-
-				// Update element position
-				appStore.updateElement({
-					elementId: dragMeta.id,
-					updates: { x: bounded.x, y: bounded.y },
-					pageId: dragMeta.pageId
-				});
-			});
-		}
-	}
-
-	function handleElementResizeAnimationFrame({
-		element,
-		direction,
-		startState,
-		startX,
-		startY,
-		scaleX,
-		scaleY,
-		last
-	}: {
-		element: TCanvasElement;
-		direction: ResizeDirection;
-		startState: { x: number; y: number; w: number; h: number };
-		startX: number;
-		startY: number;
-		scaleX: number;
-		scaleY: number;
-		last: { x: number; y: number };
-	}) {
-		return requestAnimationFrame(() => {
-			const deltaX = (last.x - startX) * scaleX;
-			const deltaY = (last.y - startY) * scaleY;
-
-			let newWidth = startState.w;
-			let newHeight = startState.h;
-			let newX = startState.x;
-			let newY = startState.y;
-
-			const { horizontal, vertical } = page.boundaries;
-
-			switch (direction) {
-				case 'e':
-					newWidth = Math.max(20, startState.w + deltaX);
-					break;
-				case 'w':
-					newWidth = Math.max(20, startState.w - deltaX);
-					newX = Math.max(horizontal.start, startState.x + deltaX);
-					break;
-				case 's':
-					newHeight = Math.max(20, startState.h + deltaY);
-					break;
-				case 'n':
-					newHeight = Math.max(20, startState.h - deltaY);
-					newY = Math.max(vertical.start, startState.y + deltaY);
-					break;
-				case 'se':
-					newWidth = Math.max(20, startState.w + deltaX);
-					newHeight = Math.max(20, startState.h + deltaY);
-					break;
-				case 'sw':
-					newWidth = Math.max(20, startState.w - deltaX);
-					newX = Math.max(horizontal.start, startState.x + deltaX);
-					newHeight = Math.max(20, startState.h + deltaY);
-					break;
-				case 'ne':
-					newWidth = Math.max(20, startState.w + deltaX);
-					newHeight = Math.max(20, startState.h - deltaY);
-					newY = Math.max(vertical.start, startState.y + deltaY);
-					break;
-				case 'nw':
-					newWidth = Math.max(20, startState.w - deltaX);
-					newX = Math.max(horizontal.start, startState.x + deltaX);
-					newHeight = Math.max(20, startState.h - deltaY);
-					newY = Math.max(vertical.start, startState.y + deltaY);
-					break;
-			}
-
-			// Enforce boundaries
-			if (newX + newWidth > horizontal.end) {
-				newWidth = horizontal.end - newX;
-			}
-			if (newY + newHeight > vertical.end) {
-				newHeight = vertical.end - newY;
-			}
-
-			appStore.updateElement({
-				elementId: element.id,
-				updates: { x: newX, y: newY, width: newWidth, height: newHeight },
-				pageId: element.pageId
-			});
-		});
-	}
-
-	function handleElementResize(
-		event: MouseEvent | PointerEvent | TouchEvent,
-		element: TCanvasElement,
-		direction: ResizeDirection
-	) {
-		event.stopPropagation();
-		isResizing = true;
-		const originalUserSelect = document.body.style.userSelect;
-		const originalTouchAction = document.body.style.touchAction;
-		document.body.style.userSelect = '';
-		document.body.style.touchAction = 'none'; // Prevent touch scrolling during resize
-
-		const rect = canvasRef.getBoundingClientRect();
-		const scaleX = width / rect.width;
-		const scaleY = height / rect.height;
-
-		// Handle both mouse/pointer and touch events
-		const startX = 'touches' in event ? event.touches[0].clientX : event.clientX;
-		const startY = 'touches' in event ? event.touches[0].clientY : event.clientY;
-
-		const startState = {
-			x: element.x,
-			y: element.y,
-			w: element.width,
-			h: element.height
-		};
-
-		let resizeRafId: number | null = null;
-		let last = { x: startX, y: startY };
-		let lastUpdateTime = 0;
-		const UPDATE_THROTTLE = 16; // ~60fps for smoother mobile performance
-
-		const onPointerMove = (e: PointerEvent) => {
-			last = { x: e.clientX, y: e.clientY };
-
-			// Throttle updates for better mobile performance
-			const now = performance.now();
-			if (now - lastUpdateTime < UPDATE_THROTTLE && resizeRafId !== null) {
-				return;
-			}
-
-			lastUpdateTime = now;
-
-			if (resizeRafId === null) {
-				resizeRafId = handleElementResizeAnimationFrame({
-					element,
-					direction,
-					startState,
-					startX,
-					startY,
-					scaleX,
-					scaleY,
-					last
-				});
-
-				resizeRafId = null;
-			}
-		};
-
-		const onTouchMove = (e: TouchEvent) => {
-			const touch = e.touches[0];
-			last = { x: touch.clientX, y: touch.clientY };
-
-			// Throttle updates for better mobile performance
-			const now = performance.now();
-			if (now - lastUpdateTime < UPDATE_THROTTLE && resizeRafId !== null) {
-				return;
-			}
-
-			lastUpdateTime = now;
-
-			if (resizeRafId === null) {
-				resizeRafId = handleElementResizeAnimationFrame({
-					element,
-					direction,
-					startState,
-					startX,
-					startY,
-					scaleX,
-					scaleY,
-					last
-				});
-
-				resizeRafId = null;
-			}
-		};
-
-		const option: AddEventListenerOptions = { passive: false };
-
-		const onPointerUp = () => {
-			isResizing = false;
-			if (resizeRafId !== null) {
-				cancelAnimationFrame(resizeRafId);
-				resizeRafId = null;
-			}
-			document.removeEventListener('pointermove', onPointerMove);
-			document.removeEventListener('pointerup', onPointerUp, true);
-			document.removeEventListener('touchmove', onTouchMove, option);
-			document.removeEventListener('touchend', onPointerUp, true);
-			document.body.style.userSelect = originalUserSelect; // Restore original user select
-			document.body.style.touchAction = originalTouchAction; // Restore original touch action
-		};
-
-		// Add both pointer and touch event listeners for better mobile support
-		document.addEventListener('pointermove', onPointerMove);
-		document.addEventListener('pointerup', onPointerUp, true);
-		document.addEventListener('touchmove', onTouchMove, option);
-		document.addEventListener('touchend', onPointerUp, true);
-	}
-
 	// Exposed methods for drag preview
 	export function updateDragPreview(event: DragEvent) {
 		if (!canvasRef) return;
 
 		const rect = canvasRef.getBoundingClientRect();
-		const scaleX = width / rect.width;
-		const scaleY = height / rect.height;
+		const pointer = {
+			x: (event.clientX - rect.left) * (width / rect.width),
+			y: (event.clientY - rect.top) * (height / rect.height)
+		};
 
-		let x = (event.clientX - rect.left) * scaleX;
-		let y = (event.clientY - rect.top) * scaleY;
+		const preview = dragPreviewRect(pointer, page.boundaries);
+		dragPreview = preview;
 
-		const { horizontal, vertical } = page.boundaries;
-
-		// Calculate dynamic dimensions
-		let previewWidth = horizontal.end - x;
-		let previewHeight = Math.min(500, vertical.end - y);
-
-		const MIN_WIDTH = 100;
-		const MIN_HEIGHT = 50;
-
-		if (previewWidth < MIN_WIDTH) {
-			previewWidth = Math.min(MIN_WIDTH, horizontal.end - horizontal.start);
-		}
-		if (previewHeight < MIN_HEIGHT) {
-			previewHeight = Math.min(MIN_HEIGHT, vertical.end - vertical.start);
-		}
-
-		// Clamp to boundaries
-		x = Math.max(horizontal.start, Math.min(x, horizontal.end - previewWidth));
-		y = Math.max(vertical.start, Math.min(y, vertical.end - previewHeight));
-
-		dragPreview = { x, y, width: previewWidth, height: previewHeight };
-
-		// Check for hovered element
-		let foundHover = false;
-		for (const element of Object.values(page.elements)) {
-			if (
-				x >= element.x &&
-				x <= element.x + element.width &&
-				y >= element.y &&
-				y <= element.y + element.height
-			) {
-				hoveredElementId = element.id;
-				foundHover = true;
-				break;
-			}
-		}
-		if (!foundHover) {
-			hoveredElementId = null;
-		}
+		// Highlight the element the new one would be dropped into
+		const hovered = findElementAt(Object.values(page.elements), preview);
+		hoveredElementId = hovered ? hovered.id : null;
 	}
 
 	export function clearDragPreview() {
@@ -746,16 +240,26 @@
 				bind:this={canvasRef}
 				id={`canvas-${dataPageId}`}
 				data-testid="document-canvas"
-				class="relative bg-background shadow-lg"
+				class="relative bg-paper text-paper-foreground shadow-lg {dropHere
+					? 'ring-4 ring-primary'
+					: ''}"
 				style:width="{width * scale}px"
 				style:height="{height * scale}px"
+				style:touch-action={multiSelectMode ? 'none' : undefined}
+				onpointerdowncapture={() => appStore.setActivePage(page.id)}
 				onclick={handleCanvasClick}
+				onpointerdown={(e) => {
+					// Touch screens scroll with a finger, so a selection box needs the select-multiple mode there
+					if (e.target === canvasRef && (e.pointerType !== 'touch' || multiSelectMode)) {
+						marquee.start(e, isAdditive(e));
+					}
+				}}
 				role="button"
 				tabindex="0"
 				onkeydown={(e) => {
 					if (e.key === 'Escape') {
 						clearDragPreview();
-						cancelDrag();
+						drag.cancel();
 					}
 				}}
 				ondragover={handleCanvasDragOver}
@@ -785,7 +289,7 @@
 
 				<!-- Render all elements (sorted by zIndex) -->
 				{#each Object.values(page.elements).sort((a, b) => a.zIndex - b.zIndex) as element (element.id)}
-					{@const isSelected = selectedElement?.id === element.id}
+					{@const isSelected = appStore.isSelected(element.id)}
 					{@const isHighlighted = highlightedElementIds.includes(element.id)}
 					{@const isHovered = hoveredElementId === element.id}
 					<div
@@ -798,28 +302,95 @@
 							? 'ring-2 ring-primary'
 							: ''} {isHovered ? 'ring-primary' : ''} {isHighlighted && !isSelected
 							? 'ring-primary/30'
-							: ''}"
-						class:transition-none={isDragging || isResizing}
+							: ''} {multiSelectMode ? '[&>div]:pointer-events-none' : ''}"
+						class:transition-none={drag.isDragging || resize.isResizing || groupResize.isResizing}
 						style:left={pixelsToPercent(element.x, width)}
 						style:top={pixelsToPercent(element.y, height)}
 						style:width={pixelsToPercent(element.width, width)}
 						style:height={pixelsToPercent(element.height, height)}
 						style:z-index={element.zIndex}
 						style:touch-action="none"
-						onpointerdown={(e) => {
-							startElementDrag(e, element);
-						}}
-						ontouchstart={(e) => {
-							startElementDrag(e, element);
-						}}
+						onpointerdown={(e) => handleElementPress(e, element)}
+						ontouchstart={(e) => handleElementPress(e, element)}
+						onclick={(e) => handleElementClick(e, element)}
 					>
 						<CanvasElement
 							{element}
-							{isSelected}
-							onResize={(event, direction) => handleElementResize(event, element, direction)}
+							isSelected={isSelected && selectedHere.length === 1}
+							onResize={(event, direction) => resize.start(event, element, direction)}
 						/>
 					</div>
 				{/each}
+
+				<!-- Where elements dragged from another page would land -->
+				{#if dropHere}
+					{#each dropHere.rects as rect, i (i)}
+						<div
+							class="pointer-events-none absolute border-2 border-dashed border-primary bg-primary/10"
+							style:left={pixelsToPercent(rect.x, width)}
+							style:top={pixelsToPercent(rect.y, height)}
+							style:width={pixelsToPercent(rect.width, width)}
+							style:height={pixelsToPercent(rect.height, height)}
+							style:z-index="9999"
+							data-testid="page-drop-preview"
+							data-html2canvas-ignore
+						></div>
+					{/each}
+				{/if}
+
+				<!-- Box around a multiple selection, and the selection box being dragged -->
+				{#if selectionBox}
+					<div
+						class="pointer-events-none absolute border-2 border-dashed border-primary"
+						style:left={pixelsToPercent(selectionBox.x, width)}
+						style:top={pixelsToPercent(selectionBox.y, height)}
+						style:width={pixelsToPercent(selectionBox.width, width)}
+						style:height={pixelsToPercent(selectionBox.height, height)}
+						style:z-index="9998"
+						data-testid="selection-box"
+						data-html2canvas-ignore
+					>
+						<!-- Corner handles resize everything in the box, keeping its proportions -->
+						{#each corners as corner (corner)}
+							<div
+								class="pointer-events-auto absolute h-3 w-3 rounded-full border-2 border-primary-foreground bg-primary shadow-md {corner ===
+								'nw'
+									? '-top-1.5 -left-1.5 cursor-nw-resize'
+									: corner === 'ne'
+										? '-top-1.5 -right-1.5 cursor-ne-resize'
+										: corner === 'sw'
+											? '-bottom-1.5 -left-1.5 cursor-sw-resize'
+											: '-right-1.5 -bottom-1.5 cursor-se-resize'}"
+								style:touch-action="none"
+								onpointerdown={(e) => {
+									e.preventDefault();
+									e.stopPropagation();
+									groupResize.start(e, corner);
+								}}
+								ontouchstart={(e) => {
+									e.stopPropagation();
+									groupResize.start(e, corner);
+								}}
+								role="button"
+								tabindex="0"
+								onkeydown={null}
+								data-testid={`group-resize-handle-${corner}`}
+							></div>
+						{/each}
+					</div>
+				{/if}
+				{#if marquee.box}
+					<div
+						class="pointer-events-none absolute border border-primary bg-primary/10"
+						style:left={pixelsToPercent(marquee.box.x, width)}
+						style:top={pixelsToPercent(marquee.box.y, height)}
+						style:width={pixelsToPercent(marquee.box.width, width)}
+						style:height={pixelsToPercent(marquee.box.height, height)}
+						style:z-index="9999"
+						data-testid="marquee"
+						data-html2canvas-ignore
+					></div>
+				{/if}
 
 				<!-- Drag preview -->
 				{#if dragPreview}
