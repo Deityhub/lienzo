@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { CANVAS_HEIGHT, CANVAS_WIDTH } from '../const/dimension';
+import { boundaryAdjustments } from '../utils/geometry';
 import { documentFromTemplate, templates } from '.';
 
 describe('templates', () => {
@@ -21,6 +22,22 @@ describe('templates', () => {
 				expect(el.y + el.height, `${t.id}: "${el.text}"`).toBeLessThanOrEqual(CANVAS_HEIGHT);
 			}
 		}
+	});
+
+	it('open in the editor exactly as designed: it does not move or resize anything', () => {
+		const moved: Record<string, string[]> = {};
+		for (const t of templates) {
+			const [page] = Object.values(documentFromTemplate(t).pages);
+			const changes = boundaryAdjustments(Object.values(page.elements), page.boundaries);
+			const texts = Object.keys(changes).map((id) => {
+				const el = page.elements[id];
+				return el.type === 'text'
+					? el.text.slice(0, 20)
+					: `${el.type} at ${el.x},${el.y} ${el.width}x${el.height}`;
+			});
+			if (texts.length) moved[t.id] = texts;
+		}
+		expect(moved).toEqual({});
 	});
 
 	it('make a new document each time, with ids that point at the right page', () => {

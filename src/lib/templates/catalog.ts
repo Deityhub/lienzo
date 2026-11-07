@@ -87,7 +87,7 @@ const coverLetter: Template = {
 	category: 'Career',
 	accent: '#0f6cbd',
 	elements: [
-		rect(M, 56, 6, 64, '#0f6cbd'),
+		rect(M, 56, 8, 64, '#0f6cbd'),
 		text(M + 22, 56, 400, 'Alex Morgan', { size: 26, weight: '700' }),
 		text(M + 22, 94, 400, 'Product designer', { size: 13, color: muted }),
 		text(M, 56, W, 'alex@example.com\n+1 555 010 2030\nLisbon, Portugal', {
@@ -323,8 +323,8 @@ const flyer: Template = {
 	accent: '#c239b3',
 	elements: [
 		rect(0, 0, PAGE_W, PAGE_H, '#1f1f1f'),
-		ellipse(470, 60, 470, 470, '#c239b3', { opacity: 0.9 }),
-		ellipse(560, 880, 420, 420, '#0f6cbd', { opacity: 0.9 }),
+		ellipse(470, 60, 390, 390, '#c239b3', { opacity: 0.9 }),
+		ellipse(480, 820, 380, 380, '#0f6cbd', { opacity: 0.9 }),
 		text(M, 80, 420, 'Summer\nNight\nMarket', {
 			size: 84,
 			weight: '800',
@@ -332,7 +332,7 @@ const flyer: Template = {
 			lines: 3
 		}),
 		text(M, 440, 420, 'Food, music and local makers', { size: 18, color: '#f2f2f2' }),
-		rect(M, 760, W, 3, '#ffffff'),
+		line(M, 761, W, '#ffffff', 3),
 		text(M, 790, 360, 'Saturday\nJuly 12', { size: 34, weight: '700', color: '#ffffff', lines: 2 }),
 		text(M + 360, 790, W - 360, '6 pm until late\nHarbour Square\nFree entry', {
 			size: 18,

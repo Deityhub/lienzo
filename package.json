@@ -4,7 +4,7 @@
 	"version": "1.1.0",
 	"author": {
 		"name": "Chizoba Jude Ojini",
-		"email": "contact@judeojini.com",
+		"email": "contact@deityhub.com",
 		"url": "https://judeojini.com"
 	},
 	"license": "GPL-3.0-only",
@@ -28,7 +28,9 @@
 		"test:unit:coverage": "svelte-kit sync && vitest --run --coverage",
 		"test": "yarn test:unit:run && yarn test:e2e",
 		"brand:assets": "node scripts/generate-brand-assets.mjs",
-		"test:e2e": "playwright test"
+		"test:e2e": "playwright test",
+		"notices": "node scripts/generate-notices.mjs",
+		"docs:screenshots": "yarn build && node scripts/generate-screenshots.mjs"
 	},
 	"devDependencies": {
 		"@cantoo/pdf-lib": "^2.11.1",
