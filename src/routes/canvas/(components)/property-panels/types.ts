@@ -1,1 +1,1 @@
-export type OnPropertyChange = (property: string, value: string | number) => void;
+export type OnPropertyChange = (property: string, value: unknown) => void;

@@ -3,6 +3,7 @@
 	import { slide } from 'svelte/transition';
 	import Button from '$lib/components/Button.svelte';
 	import { ChevronUp, Group, Trash2, Ungroup } from '@lucide/svelte';
+	import type { TCanvasElement } from '$lib/types/canvas';
 	import PositionSize from './property-panels/PositionSize.svelte';
 	import Layering from './property-panels/Layering.svelte';
 	import MoveToPage from './property-panels/MoveToPage.svelte';
@@ -25,12 +26,12 @@
 	const pages = $derived(appStore.getPages());
 	const currentPage = $derived(selectedElement ? pages[selectedElement.pageId] : undefined);
 
-	function handlePropertyChange(property: string, value: string | number) {
+	function handlePropertyChange(property: string, value: unknown) {
 		if (!selectedElement) return;
 
 		appStore.updateElement({
 			elementId: selectedElement.id,
-			updates: { [property]: value },
+			updates: { [property]: value } as Partial<TCanvasElement>,
 			pageId: selectedElement.pageId
 		});
 	}
