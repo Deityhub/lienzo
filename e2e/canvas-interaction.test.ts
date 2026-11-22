@@ -39,7 +39,7 @@ test.describe('Canvas interaction', () => {
 		await addTextElement(page);
 		const before = await geometry(page);
 
-		await dragBy(page, page.locator('textarea'), 60, 40);
+		await dragBy(page, page.locator('[contenteditable="true"]'), 60, 40);
 
 		const after = await geometry(page);
 		expect(after.x).toBeGreaterThan(before.x);
@@ -50,7 +50,7 @@ test.describe('Canvas interaction', () => {
 
 	test('the north-west handle moves the origin and grows the element', async ({ page }) => {
 		await addTextElement(page);
-		await dragBy(page, page.locator('textarea'), 80, 80); // make room first
+		await dragBy(page, page.locator('[contenteditable="true"]'), 80, 80); // make room first
 		const before = await geometry(page);
 
 		await dragBy(page, page.getByTestId('resize-handle-nw'), -30, -20);

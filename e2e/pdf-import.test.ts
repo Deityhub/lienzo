@@ -37,7 +37,7 @@ const doc = {
 async function exportPdf(page: Page): Promise<string> {
 	await seedDocument(page, doc);
 	await page.getByRole('button', { name: 'Edit' }).click();
-	await expect(page.locator('textarea')).toHaveValue('Editable headline');
+	await expect(page.locator('[contenteditable="true"]')).toHaveText('Editable headline');
 
 	await page.getByTestId('export-btn').click();
 	const download = page.waitForEvent('download');
@@ -76,7 +76,7 @@ test.describe('PDF import', () => {
 		await page.waitForLoadState('networkidle'); // clicks only work once the page is interactive // a fresh, empty canvas
 		await page.getByTestId('canvas-import-input').setInputFiles(pdfPath);
 
-		await expect(page.locator('textarea')).toHaveValue('Editable headline');
+		await expect(page.locator('[contenteditable="true"]')).toHaveText('Editable headline');
 	});
 
 	test('a PDF that did not come from Lienzo is rejected with an explanation', async ({ page }) => {

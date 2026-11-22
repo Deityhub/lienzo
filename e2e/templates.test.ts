@@ -38,11 +38,11 @@ test.describe('Template gallery', () => {
 
 		await expect(page).toHaveURL(/\/canvas$/);
 		await expect(page.getByTestId('document-title')).toHaveText('Resume');
-		const texts = page.locator('textarea');
+		const texts = page.locator('[contenteditable="true"]');
 		await expect(texts.first()).toBeVisible();
 		expect(await texts.count()).toBeGreaterThan(8);
 		const values = await texts.evaluateAll((all) =>
-			all.map((t) => (t as HTMLTextAreaElement).value)
+			all.map((t) => (t as HTMLElement).textContent ?? '')
 		);
 		expect(values).toContain('Alex Morgan');
 	});
@@ -61,7 +61,7 @@ test.describe('Template gallery', () => {
 		await page.getByTestId('template-blank').click();
 
 		await expect(page).toHaveURL(/\/canvas$/);
-		await expect(page.locator('textarea')).toHaveCount(0);
+		await expect(page.locator('[contenteditable="true"]')).toHaveCount(0);
 	});
 
 	test('the home page shows a few of them, and links to all', async ({ page, request }) => {

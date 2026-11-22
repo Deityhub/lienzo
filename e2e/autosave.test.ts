@@ -72,7 +72,7 @@ test.describe('Autosave', () => {
 			}
 		});
 		await page.getByRole('button', { name: 'Edit' }).click();
-		await expect(page.locator('textarea')).toHaveValue('Before');
+		await expect(page.locator('[contenteditable="true"]')).toHaveText('Before');
 
 		// Opening a document is not an edit
 		await page.waitForTimeout(2500);
@@ -80,7 +80,7 @@ test.describe('Autosave', () => {
 			t1: { text: 'Before' }
 		});
 
-		await page.locator('textarea').fill('After');
+		await page.locator('[contenteditable="true"]').fill('After');
 		await expect(page.getByTestId('save-status')).toHaveText('Saved', { timeout: 10000 });
 
 		const [stored] = await storedDocuments(page);
