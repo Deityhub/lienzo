@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { DocumentData } from '../types/canvas';
+import { CURRENT_SCHEMA_VERSION } from '../stores/migrations';
 import { sampleDoc } from './testDocument';
 import {
 	asImportedCopy,
@@ -42,7 +43,7 @@ describe('document files', () => {
 		const file = { app: 'lienzo', formatVersion: 1, documents: [legacy] };
 
 		const { documents } = parseDocumentFile(JSON.stringify(file));
-		expect(documents[0].schemaVersion).toBe(1);
+		expect(documents[0].schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
 	});
 
 	it('keeps the valid documents and reports the invalid ones by name', () => {
