@@ -11,6 +11,8 @@ export interface MeasuredLine {
 	xs: number[];
 	left: number;
 	right: number;
+	/** Top of the line from the top of the box */
+	top: number;
 	/** Position of the baseline from the top of the box */
 	baseline: number;
 }
