@@ -1,5 +1,23 @@
 export type ElementType = 'text' | 'shape' | 'image';
 export type ResizeDirection = 'n' | 's' | 'e' | 'w' | 'nw' | 'ne' | 'sw' | 'se';
+export type LinkType = 'url' | 'email';
+
+/** Default colour used for linked text when no per-link colour is set. */
+export const DEFAULT_LINK_COLOR = '#0000EE';
+
+/** A clickable span inside a text element, identified by character offsets into `text`. */
+export interface TextLink {
+	id: string;
+	/** Inclusive character offset into the element's text. */
+	start: number;
+	/** Exclusive character offset into the element's text. */
+	end: number;
+	/** The link destination: an https URL or a mailto: address. */
+	url: string;
+	type: LinkType;
+	/** Colour of the linked text. Defaults to DEFAULT_LINK_COLOR when absent. */
+	color?: string;
+}
 
 interface BaseElement {
 	id: string;
@@ -28,6 +46,8 @@ export interface TextElement extends BaseElement {
 	color: string;
 	backgroundColor?: string;
 	backgroundOpacity?: number; // 0-1 for transparency control
+	/** Clickable spans within the text (url or email links). */
+	links?: TextLink[];
 }
 
 export interface ShapeElement extends BaseElement {

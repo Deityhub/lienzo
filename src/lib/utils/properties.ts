@@ -74,7 +74,8 @@ export function getDefaultProperties({
 				textTransform: 'none',
 				color: '#000000',
 				backgroundOpacity: 0,
-				backgroundColor: '#ffffff'
+				backgroundColor: '#ffffff',
+				links: []
 			};
 		case 'shape':
 			return {
