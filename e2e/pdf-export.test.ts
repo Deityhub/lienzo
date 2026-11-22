@@ -119,7 +119,7 @@ const doc = {
 test('exports a PDF with real text, vector shapes and a single image', async ({ page }) => {
 	await seedDocument(page, doc);
 	await page.getByRole('button', { name: 'Edit' }).click();
-	await expect(page.locator('textarea').first()).toBeVisible();
+	await expect(page.locator('[contenteditable="true"]').first()).toBeVisible();
 
 	await page.getByTestId('export-btn').click();
 	const download = page.waitForEvent('download');
@@ -166,7 +166,7 @@ test('tells the user when an image cannot be included, and still exports the res
 	broken.pages.p1.elements.i1.src = 'data:image/png;base64,AAAA'; // not a real image
 	await seedDocument(page, broken);
 	await page.getByRole('button', { name: 'Edit' }).click();
-	await expect(page.locator('textarea').first()).toBeVisible();
+	await expect(page.locator('[contenteditable="true"]').first()).toBeVisible();
 
 	await page.getByTestId('export-btn').click();
 	const download = page.waitForEvent('download');

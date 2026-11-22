@@ -1,9 +1,10 @@
 // Test fixture shared by unit and browser specs
 import type { DocumentData } from '../types/canvas';
+import { CURRENT_SCHEMA_VERSION } from '../stores/migrations';
 
 export const sampleDoc = (id = 'd1', name = 'Resume'): DocumentData => ({
 	id,
-	schemaVersion: 1,
+	schemaVersion: CURRENT_SCHEMA_VERSION,
 	name,
 	createdAt: 1,
 	updatedAt: 2,
@@ -26,7 +27,8 @@ export const sampleDoc = (id = 'd1', name = 'Resume'): DocumentData => ({
 					fontSize: 16,
 					fontWeight: '400',
 					fontStyle: 'normal',
-					color: '#000'
+					color: '#000',
+					links: []
 				}
 			}
 		}

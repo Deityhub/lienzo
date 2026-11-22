@@ -159,7 +159,7 @@ test.describe('Import / export', () => {
 			await page.getByTestId('canvas-import-input').setInputFiles(fileOf([twoPageDocument]));
 
 			await expect(page.getByTestId('page-count')).toContainText('2 Pages');
-			await expect(page.locator('textarea')).toHaveValue('Imported headline');
+			await expect(page.locator('[contenteditable="true"]')).toHaveText('Imported headline');
 			await expect(page.getByTestId('canvas-import-confirm')).toBeHidden();
 		});
 
@@ -177,7 +177,7 @@ test.describe('Import / export', () => {
 
 			await page.getByRole('button', { name: 'Replace canvas' }).click();
 			await expect(page.getByTestId('page-count')).toContainText('2 Pages');
-			await expect(page.locator('textarea')).toHaveValue('Imported headline');
+			await expect(page.locator('[contenteditable="true"]')).toHaveText('Imported headline');
 		});
 
 		test('cancelling keeps the current canvas', async ({ page }) => {
@@ -189,7 +189,7 @@ test.describe('Import / export', () => {
 			await page.getByRole('dialog').getByRole('button', { name: 'Cancel' }).click();
 
 			await expect(page.getByTestId('page-count')).toContainText('2 Pages');
-			await expect(page.locator('textarea')).toHaveCount(0);
+			await expect(page.locator('[contenteditable="true"]')).toHaveCount(0);
 		});
 
 		test('a file with several documents is rejected', async ({ page }) => {

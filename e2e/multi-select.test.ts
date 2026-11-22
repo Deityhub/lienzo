@@ -176,13 +176,13 @@ test.describe('Selecting several elements', () => {
 		await page.getByTestId('tool-text').dragTo(page.getByTestId('document-canvas'), {
 			targetPosition: { x: 200, y: 330 }
 		});
-		const textarea = page.locator('textarea');
+		const textarea = page.locator('[contenteditable="true"]');
 		await textarea.fill('abc');
 		await textarea.focus();
 
 		await page.keyboard.press('Backspace');
 
-		await expect(textarea).toHaveValue('ab');
+		await expect(textarea).toHaveText('ab');
 		await expect(elements(page)).toHaveCount(4);
 	});
 });

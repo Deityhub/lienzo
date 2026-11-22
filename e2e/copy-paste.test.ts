@@ -166,14 +166,14 @@ test.describe('Copy and paste', () => {
 		await page.getByTestId('tool-text').dragTo(page.getByTestId('document-canvas'), {
 			targetPosition: { x: 100, y: 100 }
 		});
-		const textarea = page.locator('textarea');
+		const textarea = page.locator('[contenteditable="true"]');
 		await textarea.fill('hello');
 		await textarea.press('ControlOrMeta+a');
 		await page.keyboard.press('ControlOrMeta+c');
 		await page.keyboard.press('ControlOrMeta+v');
 		await page.keyboard.press('ControlOrMeta+v');
 
-		await expect(textarea).toHaveValue('hellohello'); // text pasted into the text, not new elements
+		await expect(textarea).toHaveText('hellohello'); // text pasted into the text, not new elements
 		await expect(page.locator('[data-testid="document-canvas"] > .cursor-move')).toHaveCount(1);
 	});
 

@@ -1,7 +1,7 @@
-import type { DocumentData } from '../types/canvas';
+import type { DocumentData, TextElement } from '../types/canvas';
 
 /** Bump when the stored document shape changes, and add a migration for the previous version. */
-export const CURRENT_SCHEMA_VERSION = 1;
+export const CURRENT_SCHEMA_VERSION = 2;
 
 export class InvalidDocumentError extends Error {
 	constructor(message: string) {
@@ -25,9 +25,20 @@ export type Migrations = Record<number, (doc: RawDoc) => RawDoc>;
 /**
  * Migrations keyed by the version they upgrade FROM (n upgrades n -> n + 1).
  * Documents saved before versioning have no `schemaVersion` and are treated as v1.
- * Example, once the shape changes: `1: (doc) => ({ ...doc, tags: [] })` with CURRENT_SCHEMA_VERSION = 2.
  */
-const MIGRATIONS: Migrations = {};
+const MIGRATIONS: Migrations = {
+	1: (doc) => {
+		for (const page of Object.values(doc.pages ?? {})) {
+			const elements = page.elements ?? {};
+			for (const el of Object.values(elements)) {
+				if ((el as Record<string, unknown>).type === 'text') {
+					(el as TextElement).links = [];
+				}
+			}
+		}
+		return doc;
+	}
+};
 
 const isObject = (v: unknown): v is RawDoc =>
 	typeof v === 'object' && v !== null && !Array.isArray(v);
@@ -69,8 +80,26 @@ export function validateDocument(doc: unknown): asserts doc is DocumentData {
 			for (const key of ['zIndex', 'x', 'y', 'width', 'height']) {
 				if (!isNum(el[key])) fail(`${e}.${key}`, 'a number');
 			}
-			if (el.type === 'text' && !isStr(el.text)) fail(`${e}.text`, 'a string');
-			else if (el.type === 'shape' && !isStr(el.shapeType)) fail(`${e}.shapeType`, 'a string');
+			if (el.type === 'text') {
+				if (!isStr(el.text)) fail(`${e}.text`, 'a string');
+				const links = el.links;
+				if (links !== undefined && !Array.isArray(links)) fail(`${e}.links`, 'an array');
+				else if (Array.isArray(links)) {
+					for (const [i, link] of links.entries()) {
+						const lp = `${e}.links[${i}]`;
+						if (!isObject(link)) fail(lp, 'an object');
+						if (!isNum(link.start)) fail(`${lp}.start`, 'a number');
+						if (!isNum(link.end)) fail(`${lp}.end`, 'a number');
+						if (!isStr(link.url) || !link.url) fail(`${lp}.url`, 'a non-empty string');
+						if (link.type !== 'url' && link.type !== 'email') {
+							fail(`${lp}.type`, '"url" or "email"');
+						}
+						if (link.color !== undefined && !isStr(link.color)) {
+							fail(`${lp}.color`, 'a string');
+						}
+					}
+				}
+			} else if (el.type === 'shape' && !isStr(el.shapeType)) fail(`${e}.shapeType`, 'a string');
 			else if (el.type === 'image' && !isStr(el.src)) fail(`${e}.src`, 'a string');
 			else if (el.type !== 'text' && el.type !== 'shape' && el.type !== 'image') {
 				fail(`${e}.type`, '"text", "shape" or "image"');
